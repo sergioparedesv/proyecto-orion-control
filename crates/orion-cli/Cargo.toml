@@ -1,0 +1,21 @@
+[package]
+name = "orion-cli"
+description = "CLI de ORION: spikes de validación (F0) y monitor en consola (F1)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "orion-cli"
+path = "src/main.rs"
+
+[dependencies]
+orion-engine.workspace = true
+orion-probe.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+clap.workspace = true
+anyhow.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+futures.workspace = true
+tracing-subscriber.workspace = true

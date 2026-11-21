@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Permisos mínimos de la ventana principal: eventos del núcleo y comandos propios. Sin acceso a shell, fs ni http.",
+  "windows": ["main"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-get-status",
+    "allow-start-monitor",
+    "allow-stop-monitor",
+    "allow-set-region",
+    "allow-list-relays",
+    "allow-reset-baseline",
+    "allow-get-settings",
+    "allow-set-settings",
+    "allow-cli-exec"
+  ]
+}

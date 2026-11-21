@@ -1,0 +1,32 @@
+[package]
+name = "orion-probe"
+description = "Sondeos de red de ORION: ICMP, gateway, hops, relays SDR, Wi-Fi y bucle de monitoreo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["mock"]
+# MockProber y MockEnv: guiones deterministas para pruebas y modo DEMO en compilaciones de desarrollo.
+mock = []
+
+[dependencies]
+orion-engine.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ts-rs.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+sha2.workspace = true
+netdev.workspace = true
+chrono.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+surge-ping = "0.8"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

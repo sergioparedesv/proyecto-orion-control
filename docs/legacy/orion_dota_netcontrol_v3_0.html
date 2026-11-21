@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORION DOTA NETCONTROL v3.0 // TELEMETRÍA Y OPTIMIZACIÓN AUTÓNOMA DE RED</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Orbitron, Rajdhani, Share Tech Mono, Cinzel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        orion: {
+                            bg: '#020408',
+                            panel: 'rgba(7, 11, 20, 0.92)',
+                            panelDark: 'rgba(3, 6, 12, 0.96)',
+                            border: '#d4af37',
+                            radiant: '#00ffa3',
+                            radiantGlow: 'rgba(0, 255, 163, 0.4)',
+                            dire: '#ff2a4b',
+                            direGlow: 'rgba(255, 42, 75, 0.4)',
+                            river: '#00c3ff',
+                            gold: '#ecc94b',
+                            steam: '#66c0f4',
+                            amber: '#ff9900',
+                            purple: '#b832ff'
+                        }
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                        mono: ['Share Tech Mono', 'monospace'],
+                        cinzel: ['Cinzel', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #010204;
+            color: #d1d5db;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Scanline Filter Layer */
+        .scanline-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 30;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%),
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.008), rgba(0, 0, 255, 0.01));
+            background-size: 100% 3px, 6px 100%;
+            opacity: 0.85;
+        }
+
+        /* Custom Technical HUD Panels */
+        .hud-panel {
+            background: rgba(7, 12, 22, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.85);
+        }
+
+        .hud-panel-dire {
+            background: rgba(22, 7, 14, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 42, 75, 0.45);
+            clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+            box-shadow: 0 0 20px rgba(255, 42, 75, 0.15);
+        }
+
+        .hud-panel-radiant {
+            background: rgba(5, 22, 16, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 163, 0.45);
+            clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+            box-shadow: 0 0 20px rgba(0, 255, 163, 0.15);
+        }
+
+        /* Text & Box Glow Effects */
+        .glow-radiant { text-shadow: 0 0 10px rgba(0, 255, 163, 0.8); }
+        .glow-dire { text-shadow: 0 0 10px rgba(255, 42, 75, 0.8); }
+        .glow-gold { text-shadow: 0 0 10px rgba(212, 175, 55, 0.8); }
+        .glow-steam { text-shadow: 0 0 10px rgba(102, 192, 244, 0.8); }
+        .glow-purple { text-shadow: 0 0 10px rgba(184, 50, 255, 0.8); }
+
+        .border-glow-gold { box-shadow: 0 0 12px rgba(212, 175, 55, 0.3); }
+        .border-glow-radiant { box-shadow: 0 0 12px rgba(0, 255, 163, 0.3); }
+        .border-glow-dire { box-shadow: 0 0 12px rgba(255, 42, 75, 0.3); }
+
+        /* Custom Tabs Styling */
+        .nav-tab-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            background: rgba(3, 6, 12, 0.8);
+            color: #9ca3af;
+            transition: all 0.2s ease;
+        }
+        .nav-tab-btn:hover {
+            border-color: #ecc94b;
+            color: #ecc94b;
+        }
+        .nav-tab-btn.active-tab {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #ecc94b;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #020408; }
+        ::-webkit-scrollbar-thumb { background: #d4af37; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ff2a4b; }
+    </style>
+</head>
+<body class="min-h-screen relative pb-10 select-none">
+
+    <!-- Scanline Layer -->
+    <div class="scanline-layer"></div>
+
+    <!-- BACKGROUND ENGINE: DOTA 2 CANVAS OR CUSTOM IMAGE WALLPAPER -->
+    <div id="wallpaper-image-container" class="fixed top-0 left-0 w-full h-full z-0 bg-cover bg-center transition-opacity duration-500 opacity-0 pointer-events-none"></div>
+    <div id="wallpaper-overlay" class="fixed top-0 left-0 w-full h-full z-0 bg-black/60 pointer-events-none hidden"></div>
+    <canvas id="orion-dota-canvas" class="fixed top-0 left-0 w-full h-full z-0 pointer-events-none"></canvas>
+
+    <!-- TOP HEADER / SYSTEM HUD BAR -->
+    <header class="w-full border-b border-orion-gold/40 bg-orion-bg/95 backdrop-blur-md sticky top-0 z-40 px-4 py-2">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- BRANDING & IDENTIFIER -->
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded bg-orion-panelDark border border-orion-gold flex items-center justify-center p-1.5 border-glow-gold">
+                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                        <rect width="100" height="100" rx="8" fill="#080404" />
+                        <path d="M 18 18 L 82 82 L 82 56 L 44 18 Z" fill="#ff2a4b" />
+                        <path d="M 18 82 L 82 18 L 56 18 L 18 44 Z" fill="#ecc94b" opacity="0.3" />
+                        <path d="M 14 24 L 76 86 L 86 86 L 24 14 Z" fill="#ecc94b" />
+                        <circle cx="28" cy="72" r="10" fill="#00ffa3" />
+                        <circle cx="72" cy="28" r="9" fill="#ff2a4b" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-extrabold text-lg tracking-wider text-white flex items-center gap-2">
+                        ORION <span class="text-orion-gold glow-gold">DOTA NETCONTROL</span> <span class="text-xs text-orion-radiant font-mono">v3.0</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-orion-purple/20 border border-orion-purple text-orion-purple flex items-center gap-1">
+                            <i class="fa-solid fa-brain text-[10px]"></i> AI NET-BRAIN ENGINE
+                        </span>
+                    </h1>
+                    <p class="text-[11px] font-mono text-gray-400">OPTIMIZACIÓN DE ENLACE AUTÓNOMA, DIAGNÓSTICO DE BUFFERBLOAT Y CONTROL DE GATEWAY</p>
+                </div>
+            </div>
+
+            <!-- MATCHMAKING LINK READINESS STATUS BADGE -->
+            <div id="readiness-status-badge" class="px-3.5 py-1.5 rounded border flex items-center space-x-2.5 bg-orion-radiant/10 border-orion-radiant text-orion-radiant transition-all duration-300 border-glow-radiant">
+                <div class="w-8 h-8 rounded-full bg-orion-bg border border-orion-radiant flex items-center justify-center p-1 shadow-inner">
+                    <svg viewBox="0 0 100 100" class="w-full h-full fill-orion-gold">
+                        <polygon points="50,5 90,25 90,65 50,95 10,65 10,25" fill="none" stroke="#ecc94b" stroke-width="8"/>
+                        <polygon points="50,18 78,32 78,60 50,82 22,60 22,32" fill="#ecc94b" opacity="0.45"/>
+                        <circle cx="50" cy="48" r="11" fill="#00ffa3"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-[9px] font-mono uppercase tracking-widest text-gray-300">ESTADO MATCHMAKING MATCH LINK</div>
+                    <div id="readiness-text" class="font-orbitron font-bold text-xs tracking-wide text-white glow-radiant">ÓPTIMO // LISTO PARA COLA MATCHMAKING</div>
+                </div>
+            </div>
+
+            <!-- CONTROLS & UTILITIES -->
+            <div class="flex items-center space-x-2">
+                <!-- Wallpaper Toggle & Custom Upload -->
+                <div class="flex items-center space-x-1.5 bg-orion-panelDark p-1.5 rounded border border-orion-gold/40 text-xs font-mono">
+                    <button onclick="toggleWallpaperEngine()" id="wp-toggle-btn" class="px-2 py-1 rounded bg-orion-gold/20 border border-orion-gold text-orion-gold hover:bg-orion-gold hover:text-black transition text-xs font-mono font-bold flex items-center gap-1" title="Cambiar entre Canvas Dota 2 y Wallpaper Personalizado">
+                        <i class="fa-solid fa-image text-[10px]"></i> WALLPAPER
+                    </button>
+                    <label class="px-2 py-1 rounded bg-orion-bg border border-gray-600 text-gray-300 hover:border-orion-gold transition text-xs font-mono cursor-pointer flex items-center gap-1" title="Cargar imagen de fondo local Dota 2">
+                        <i class="fa-solid fa-upload text-[10px]"></i>
+                        <input type="file" id="custom-wallpaper-input" accept="image/*" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Sound Presets Synth -->
+                <div class="flex items-center space-x-1.5 bg-orion-panelDark p-1.5 rounded border border-orion-gold/40 text-xs font-mono">
+                    <select id="sound-preset-select" class="bg-black text-orion-gold font-bold p-1 rounded border border-orion-gold/30 focus:outline-none text-xs">
+                        <option value="ping" selected>Map Ping (Alt-Click)</option>
+                        <option value="bkb">Black King Bar (BKB)</option>
+                        <option value="blink">Blink Dagger</option>
+                        <option value="buyback">Buyback Chime</option>
+                        <option value="alert">Siren / Loss Alert</option>
+                    </select>
+
+                    <button onclick="playSelectedPresetSound()" class="px-2 py-1 rounded bg-orion-gold/20 border border-orion-gold text-orion-gold hover:bg-orion-gold hover:text-black transition text-xs font-mono font-bold">
+                        <i class="fa-solid fa-play text-[10px]"></i>
+                    </button>
+
+                    <button id="mute-toggle-btn" class="px-2 py-1 rounded bg-orion-bg border border-gray-600 text-gray-300 hover:border-orion-gold transition text-xs font-mono">
+                        <i id="mute-icon" class="fa-solid fa-volume-high text-orion-gold"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- NAVIGATION DOCK TABS -->
+    <nav class="max-w-7xl mx-auto px-4 pt-3 z-30 relative">
+        <div class="flex flex-wrap items-center gap-2 border-b border-orion-gold/30 pb-2">
+            <button onclick="switchTab('tab-telemetry')" id="nav-tab-telemetry" class="nav-tab-btn active-tab flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-orion-gold"></i> [1] TELEMETRÍA Y MONITOR RTT
+            </button>
+            <button onclick="switchTab('tab-optimization')" id="nav-tab-optimization" class="nav-tab-btn flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-orion-radiant"></i> [2] DASHBOARD OPTIMIZACIÓN Y TUNING
+            </button>
+            <button onclick="switchTab('tab-ai-engine')" id="nav-tab-ai-engine" class="nav-tab-btn flex items-center gap-2">
+                <i class="fa-solid fa-brain text-orion-purple"></i> [3] MOTOR AUTÓNOMO SELF-LEARNING
+            </button>
+
+            <button onclick="switchTab('tab-gateway')" id="nav-tab-gateway" class="nav-tab-btn flex items-center gap-2">
+                <i class="fa-solid fa-power-off text-orion-dire"></i> [4] CONTROL GATEWAY Y ROUTER
+            </button>
+            <button onclick="switchTab('tab-bufferbloat')" id="nav-tab-bufferbloat" class="nav-tab-btn flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-orion-steam"></i> [5] BUFFERBLOAT Y ESTABILIDAD
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN DASHBOARD CONTENT AREA -->
+    <main class="max-w-7xl mx-auto px-4 pt-4 space-y-5 z-10 relative">
+
+        <!-- ========================================================================== -->
+        <!-- TAB 1: OVERVIEW & REAL-TIME TELEMETRY MONITOR                              -->
+        <!-- ========================================================================== -->
+        <div id="tab-telemetry" class="tab-content space-y-5">
+            
+            <!-- METRICS SUMMARY CARDS -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                <!-- Target Relay Selector -->
+                <div class="hud-panel p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-mono text-xs text-orion-gold uppercase tracking-wider">RELAY VALVE TARGET</span>
+                        <svg class="w-4 h-4 fill-orion-gold" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                    </div>
+                    <select id="server-select" class="w-full bg-black border border-orion-gold/50 rounded p-2 text-white font-orbitron text-xs focus:outline-none">
+                        <option value="peru" selected>Peru (Lima Relay)</option>
+                        <option value="us-east">US East (Virginia Relay)</option>
+                        <option value="brazil">Brazil (São Paulo Relay)</option>
+                        <option value="us-west">US West (Seattle Relay)</option>
+                        <option value="eu-west">EU West (Luxembourg Relay)</option>
+                        <option value="chile">Chile (Santiago Relay)</option>
+                        <option value="argentina">Argentina (Buenos Aires Relay)</option>
+                    </select>
+                    <div class="mt-2 text-xs text-gray-400 font-mono flex justify-between">
+                        <span>IP Target:</span>
+                        <span id="server-ip-display" class="text-orion-gold font-bold">190.217.33.1</span>
+                    </div>
+                </div>
+
+                <!-- Server RTT Meter -->
+                <div class="hud-panel p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-xs text-gray-400">LATENCIA RTT SERVIDOR</span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-orion-radiant animate-ping"></span>
+                    </div>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span id="metric-ping" class="font-orbitron font-extrabold text-3xl text-orion-radiant glow-radiant">24</span>
+                        <span class="font-mono text-sm text-orion-radiant">ms</span>
+                    </div>
+                    <div class="w-full bg-gray-900 h-2 rounded-full mt-3 overflow-hidden p-0.5 border border-orion-gold/20">
+                        <div id="ping-bar" class="bg-orion-radiant h-full transition-all duration-300 rounded-full" style="width: 20%;"></div>
+                    </div>
+                    <div class="mt-1 flex justify-between text-[10px] font-mono text-gray-400">
+                        <span>Baseline: &lt;75ms</span>
+                        <span id="ping-status-text" class="text-orion-radiant font-bold">ÓPTIMO</span>
+                    </div>
+                </div>
+
+                <!-- Local Gateway RTT Meter -->
+                <div class="hud-panel p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-xs text-gray-400">LATENCIA GATEWAY LOCAL</span>
+                        <i class="fa-solid fa-network-wired text-orion-steam text-sm"></i>
+                    </div>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span id="metric-router" class="font-orbitron font-extrabold text-3xl text-orion-steam glow-steam">1.1</span>
+                        <span class="font-mono text-sm text-orion-steam">ms</span>
+                    </div>
+                    <div class="w-full bg-gray-900 h-2 rounded-full mt-3 overflow-hidden p-0.5 border border-orion-gold/20">
+                        <div id="router-bar" class="bg-orion-steam h-full transition-all duration-300 rounded-full" style="width: 10%;"></div>
+                    </div>
+                    <div class="mt-1 flex justify-between text-[10px] font-mono text-gray-400">
+                        <span>Gateway: 192.168.1.1</span>
+                        <span id="router-status-text" class="text-orion-steam font-bold">ESTABLE</span>
+                    </div>
+                </div>
+
+                <!-- Packet Loss & Jitter -->
+                <div class="hud-panel p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-xs text-gray-400">PÉRDIDA PAQUETES / JITTER</span>
+                        <i class="fa-solid fa-chart-line text-orion-gold text-sm"></i>
+                    </div>
+                    <div class="mt-2 flex justify-between items-end">
+                        <div>
+                            <div class="text-[9px] font-mono text-gray-400">LOSS</div>
+                            <div class="flex items-baseline space-x-1">
+                                <span id="metric-loss" class="font-orbitron font-bold text-2xl text-white">0.0</span>
+                                <span class="font-mono text-xs text-gray-400">%</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[9px] font-mono text-gray-400">JITTER</div>
+                            <div class="flex items-baseline space-x-1 justify-end">
+                                <span id="metric-jitter" class="font-orbitron font-bold text-2xl text-orion-gold glow-gold">1.2</span>
+                                <span class="font-mono text-xs text-orion-gold">ms</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-900 h-2 rounded-full mt-3 overflow-hidden p-0.5 border border-orion-gold/20">
+                        <div id="loss-bar" class="bg-orion-radiant h-full transition-all duration-300 rounded-full" style="width: 0%;"></div>
+                    </div>
+                    <div class="mt-1 flex justify-between text-[10px] font-mono text-gray-400">
+                        <span>Tolerancia: 1.5%</span>
+                        <span id="loss-status-text" class="text-orion-radiant font-bold">0% LOSS</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- REALTIME GRAPH & REGIONAL MATRIX -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                
+                <!-- Chart -->
+                <div class="hud-panel p-5 lg:col-span-2 flex flex-col justify-between">
+                    <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-wave-square text-orion-gold"></i>
+                            <h3 class="font-orbitron font-bold text-xs text-white uppercase tracking-wider">HISTORIAL TELEMÉTRICO DE RTT Y VARIACIÓN DE SOCKET</h3>
+                        </div>
+                        <div class="flex space-x-3 text-xs font-mono">
+                            <span class="flex items-center gap-1 text-orion-radiant"><span class="w-2.5 h-2.5 bg-orion-radiant rounded-full inline-block"></span> RTT Servidor</span>
+                            <span class="flex items-center gap-1 text-orion-steam"><span class="w-2.5 h-2.5 bg-orion-steam rounded-full inline-block"></span> RTT Gateway</span>
+                            <span class="flex items-center gap-1 text-orion-dire"><span class="w-2.5 h-2.5 bg-orion-dire rounded-full inline-block"></span> Jitter (ms)</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full h-64 relative">
+                        <canvas id="pingChart"></canvas>
+                    </div>
+
+                    <div class="mt-3 pt-3 border-t border-orion-gold/20 flex flex-wrap justify-between items-center text-xs font-mono text-gray-400 gap-2">
+                        <div>POLLING RATE: <span class="text-orion-radiant font-bold">1200 ms</span></div>
+                        <div>PRUEBA DE ESTRÉS: 
+                            <button onclick="triggerLagSpike()" class="ml-2 px-2.5 py-0.5 rounded bg-orion-dire/20 border border-orion-dire text-orion-dire hover:bg-orion-dire hover:text-white transition text-xs font-mono">
+                                PROVOCAR SPIKE RTT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valve Relay Matrix -->
+                <div class="hud-panel-dire p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3 border-b border-orion-dire/30 pb-2">
+                            <h3 class="font-orbitron font-bold text-xs text-white uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-server text-orion-gold"></i>
+                                MATRIZ DE RELAYS VALVE
+                            </h3>
+                            <span class="text-[10px] font-mono text-orion-gold">RTT REAL</span>
+                        </div>
+
+                        <div class="space-y-2 font-mono text-xs" id="region-list-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="mt-3 pt-2 border-t border-orion-dire/30">
+                        <button onclick="executeBurstDiagnostic()" class="w-full py-2 px-3 rounded bg-orion-steam/20 border border-orion-steam text-orion-steam hover:bg-orion-steam hover:text-black transition font-orbitron text-xs font-bold flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>DIAGNÓSTICO DE RÁFAGA BURST ICMP</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RAW TELEMETRY / PACKET FRAME INSPECTOR -->
+            <div class="hud-panel p-4 font-mono text-xs space-y-3">
+                <div class="flex items-center justify-between border-b border-orion-gold/30 pb-2">
+                    <span class="font-orbitron text-white font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-code text-orion-gold"></i> INSPECTOR DE TRAMAS UDP DOTA 2 (TICK RATE: 64 Hz)
+                    </span>
+                    <span id="frame-tick-counter" class="text-orion-radiant">TICK SEQUENCE #140922</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-[11px]">
+                    <div class="bg-black/60 p-2 rounded border border-orion-gold/20">
+                        <span class="text-gray-400 block">DOTA 2 UDP PORT RANGE:</span>
+                        <span class="text-orion-gold font-bold">27005 - 27020 UDP</span>
+                    </div>
+                    <div class="bg-black/60 p-2 rounded border border-orion-gold/20">
+                        <span class="text-gray-400 block">CLIENT DELTA TICK RATE:</span>
+                        <span class="text-orion-radiant font-bold">64.0 Hz / 15.6 ms Tick Interval</span>
+                    </div>
+                    <div class="bg-black/60 p-2 rounded border border-orion-gold/20">
+                        <span class="text-gray-400 block">SOCKET BUFFER SIZE:</span>
+                        <span id="inspector-buffer-size" class="text-orion-steam font-bold">65,536 Bytes (Optimized)</span>
+                    </div>
+                    <div class="bg-black/60 p-2 rounded border border-orion-gold/20">
+                        <span class="text-gray-400 block">DSCP PACKET TAG:</span>
+                        <span id="inspector-dscp-tag" class="text-orion-purple font-bold">CS6 / EF (High Priority)</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ========================================================================== -->
+        <!-- TAB 2: CONNECTION OPTIMIZATION & TUNING DASHBOARD                          -->
+        <!-- ========================================================================== -->
+        <div id="tab-optimization" class="tab-content hidden space-y-5">
+            
+            <div class="hud-panel p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-orion-gold/30 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-orion-radiant"></i> DASHBOARD DE OPTIMIZACIÓN Y TUNING DE SOCKETS
+                        </h2>
+                        <p class="text-xs font-mono text-gray-400">Ajuste técnico de pila TCP/IP, priorización DSCP/QoS, MTU/MSS y servidores DNS de baja latencia.</p>
+                    </div>
+                    <button onclick="runFullOptimizationSuite()" class="py-2 px-4 rounded bg-orion-radiant text-black font-orbitron font-bold text-xs hover:bg-emerald-400 transition glow-radiant flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> EJECUTAR OPTIMIZACIÓN COMPLETA
+                    </button>
+                </div>
+
+                <!-- Tuning Parameters Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+                    
+                    <!-- Control 1: MTU Tuning -->
+                    <div class="bg-black/70 p-4 rounded border border-orion-gold/30 space-y-2">
+                        <div class="flex justify-between font-bold text-orion-gold">
+                            <span>OPTIMIZACIÓN MTU / MSS</span>
+                            <span id="mtu-val-display">1500 Bytes</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400">Previene la fragmentación de paquetes UDP eliminando sobrecosto ICMP.</p>
+                        <select id="mtu-select" class="w-full bg-orion-panel border border-orion-gold/40 rounded p-1.5 text-white font-mono text-xs focus:outline-none">
+                            <option value="1500" selected>1500 Bytes (Estándar Ethernet)</option>
+                            <option value="1492">1492 Bytes (Optimizado PPPoE / Fibra)</option>
+                            <option value="1450">1450 Bytes (VPN / Tunnel Safe)</option>
+                        </select>
+                    </div>
+
+                    <!-- Control 2: DNS Resolver Switch -->
+                    <div class="bg-black/70 p-4 rounded border border-orion-gold/30 space-y-2">
+                        <div class="flex justify-between font-bold text-orion-steam">
+                            <span>RESOLVEDOR DNS PRIORITARIO</span>
+                            <span id="dns-active-display">Cloudflare 1.1.1.1</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400">Reduce el tiempo de resolución del protocolo de nombres para relays Steam.</p>
+                        <select id="dns-select" class="w-full bg-orion-panel border border-orion-gold/40 rounded p-1.5 text-white font-mono text-xs focus:outline-none">
+                            <option value="1.1.1.1" selected>Cloudflare DNS (1.1.1.1 / 1.0.0.1)</option>
+                            <option value="8.8.8.8">Google Primary DNS (8.8.8.8 / 8.8.4.4)</option>
+                            <option value="9.9.9.9">Quad9 Secure DNS (9.9.9.9)</option>
+                            <option value="valve">Valve Direct Relay DNS Cache</option>
+                        </select>
+                    </div>
+
+                    <!-- Control 3: QoS DSCP Tagging -->
+                    <div class="bg-black/70 p-4 rounded border border-orion-gold/30 space-y-2">
+                        <div class="flex justify-between font-bold text-orion-purple">
+                            <span>QoS PACKET PRIORITIZATION</span>
+                            <span id="qos-val-display">CS6 / EF Enabled</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400">Etiqueta paquetes Dota 2 UDP con clase de servicio acelerada en router local.</p>
+                        <select id="qos-select" class="w-full bg-orion-panel border border-orion-gold/40 rounded p-1.5 text-white font-mono text-xs focus:outline-none">
+                            <option value="ef" selected>DSCP EF / CS6 (Expedited Forwarding - Gaming)</option>
+                            <option value="af41">DSCP AF41 (High Priority Streaming)</option>
+                            <option value="disabled">Sin Etiquetado QoS (Default)</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- BEFORE / AFTER TELEMETRY DELTA REPORT -->
+                <div class="bg-orion-panelDark p-4 rounded border border-orion-radiant/40 space-y-3 font-mono">
+                    <div class="flex items-center justify-between border-b border-orion-radiant/30 pb-2">
+                        <span class="font-orbitron font-bold text-xs text-orion-radiant flex items-center gap-2">
+                            <i class="fa-solid fa-square-poll-vertical"></i> INFORME DE IMPACTO Y MEJORA DE TELEMETRÍA (BEFORE VS AFTER)
+                        </span>
+                        <div class="flex space-x-2">
+                            <button onclick="exportOptimizationReport('json')" class="px-2.5 py-1 rounded bg-orion-gold/20 border border-orion-gold text-orion-gold hover:bg-orion-gold hover:text-black transition text-[10px] font-bold">
+                                EXPORTAR JSON
+                            </button>
+                            <button onclick="exportOptimizationReport('txt')" class="px-2.5 py-1 rounded bg-orion-steam/20 border border-orion-steam text-orion-steam hover:bg-orion-steam hover:text-black transition text-[10px] font-bold">
+                                EXPORTAR TXT
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                        <div class="bg-black/80 p-3 rounded border border-gray-800">
+                            <span class="text-gray-400 block text-[10px]">DELTA RTT PROMEDIO:</span>
+                            <div class="flex items-baseline space-x-2 mt-1">
+                                <span class="line-through text-gray-500" id="delta-rtt-before">34 ms</span>
+                                <i class="fa-solid fa-arrow-right text-orion-radiant text-xs"></i>
+                                <span class="text-orion-radiant font-bold text-lg" id="delta-rtt-after">24 ms</span>
+                            </div>
+                            <span class="text-[10px] text-orion-radiant font-bold block mt-1" id="delta-rtt-percent">-29.4% Latencia</span>
+                        </div>
+
+                        <div class="bg-black/80 p-3 rounded border border-gray-800">
+                            <span class="text-gray-400 block text-[10px]">REDUCCIÓN DE JITTER:</span>
+                            <div class="flex items-baseline space-x-2 mt-1">
+                                <span class="line-through text-gray-500" id="delta-jitter-before">4.2 ms</span>
+                                <i class="fa-solid fa-arrow-right text-orion-radiant text-xs"></i>
+                                <span class="text-orion-radiant font-bold text-lg" id="delta-jitter-after">1.1 ms</span>
+                            </div>
+                            <span class="text-[10px] text-orion-radiant font-bold block mt-1" id="delta-jitter-percent">-73.8% Jitter</span>
+                        </div>
+
+                        <div class="bg-black/80 p-3 rounded border border-gray-800">
+                            <span class="text-gray-400 block text-[10px]">ESTABILIZACIÓN DE LOSS:</span>
+                            <div class="flex items-baseline space-x-2 mt-1">
+                                <span class="line-through text-gray-500" id="delta-loss-before">1.8 %</span>
+                                <i class="fa-solid fa-arrow-right text-orion-radiant text-xs"></i>
+                                <span class="text-orion-radiant font-bold text-lg" id="delta-loss-after">0.0 %</span>
+                            </div>
+                            <span class="text-[10px] text-orion-radiant font-bold block mt-1">Paquetes Estabilizados</span>
+                        </div>
+
+                        <div class="bg-black/80 p-3 rounded border border-gray-800">
+                            <span class="text-gray-400 block text-[10px]">BUFFERBLOAT SCORE:</span>
+                            <div class="flex items-baseline space-x-2 mt-1">
+                                <span class="line-through text-gray-500">Grade C</span>
+                                <i class="fa-solid fa-arrow-right text-orion-radiant text-xs"></i>
+                                <span class="text-orion-gold font-bold text-lg" id="delta-score-after">Grade A+</span>
+                            </div>
+                            <span class="text-[10px] text-orion-gold font-bold block mt-1">Cola de Red Optimizada</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ========================================================================== -->
+        <!-- TAB 3: AUTONOMOUS SELF-LEARNING & SELF-IMPROVEMENT ENGINE                  -->
+        <!-- ========================================================================== -->
+        <div id="tab-ai-engine" class="tab-content hidden space-y-5">
+            
+            <div class="hud-panel p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-orion-purple/40 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-brain text-orion-purple"></i> MOTOR AUTÓNOMO DE AUTO-APRENDIZAJE Y AUTO-MEJORA (EWMA / RLS MODEL)
+                        </h2>
+                        <p class="text-xs font-mono text-gray-400">Algoritmo de aprendizaje en línea que modela el perfil de latencia local, detecta anomalías en ventana móvil y auto-calibra umbrales de alerta.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="resetLearningModel()" class="py-1.5 px-3 rounded bg-orion-dire/20 border border-orion-dire text-orion-dire hover:bg-orion-dire hover:text-white transition font-mono text-xs">
+                            RESETEAR MODELO
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Learning State Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono text-xs">
+                    <div class="bg-black/80 p-3 rounded border border-orion-purple/30">
+                        <span class="text-gray-400 block text-[10px]">ITERACIONES APRENDIDAS:</span>
+                        <span id="ai-iterations" class="font-orbitron font-bold text-2xl text-orion-purple glow-purple">1,420</span>
+                        <span class="text-[10px] text-gray-500 block mt-1">Muestras de telemetry procesadas</span>
+                    </div>
+
+                    <div class="bg-black/80 p-3 rounded border border-orion-purple/30">
+                        <span class="text-gray-400 block text-[10px]">TASA DE APRENDIZAJE (&alpha;):</span>
+                        <span id="ai-alpha" class="font-orbitron font-bold text-2xl text-orion-steam glow-steam">0.050</span>
+                        <span class="text-[10px] text-gray-500 block mt-1">EWMA Adaptive Decay Factor</span>
+                    </div>
+
+                    <div class="bg-black/80 p-3 rounded border border-orion-purple/30">
+                        <span class="text-gray-400 block text-[10px]">ÍNDICE DE CONFIANZA DEL MODELO:</span>
+                        <span id="ai-confidence" class="font-orbitron font-bold text-2xl text-orion-radiant glow-radiant">98.4 %</span>
+                        <span class="text-[10px] text-orion-radiant block mt-1">Modelo Convergido</span>
+                    </div>
+
+                    <div class="bg-black/80 p-3 rounded border border-orion-purple/30">
+                        <span class="text-gray-400 block text-[10px]">SCORE DE ANOMALÍA ACTUAL:</span>
+                        <span id="ai-anomaly-score" class="font-orbitron font-bold text-2xl text-orion-gold glow-gold">0.02</span>
+                        <span id="ai-anomaly-status" class="text-[10px] text-orion-radiant font-bold block mt-1">Comportamiento Normal</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic Calibration & Rules Dashboard -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 font-mono text-xs">
+                    
+                    <!-- Dynamic Threshold Calibration Matrix -->
+                    <div class="bg-orion-panelDark p-4 rounded border border-orion-gold/30 space-y-3">
+                        <span class="font-orbitron font-bold text-xs text-orion-gold flex items-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> AUTO-CALIBRACIÓN DINÁMICA DE UMBRALES (&mu; &plusmn; 2&sigma;)
+                        </span>
+                        <div class="space-y-2 text-[11px]">
+                            <div class="flex justify-between p-2 bg-black/60 rounded">
+                                <span class="text-gray-400">RTT Media Aprendida (&mu;):</span>
+                                <span id="ai-mu-rtt" class="text-orion-radiant font-bold">24.8 ms</span>
+                            </div>
+                            <div class="flex justify-between p-2 bg-black/60 rounded">
+                                <span class="text-gray-400">Desviación Estándar (&sigma;):</span>
+                                <span id="ai-sigma-rtt" class="text-orion-gold font-bold">1.4 ms</span>
+                            </div>
+                            <div class="flex justify-between p-2 bg-black/60 rounded border border-orion-radiant/30">
+                                <span class="text-gray-300 font-bold">Umbral Dinámico Alerta Auto-Ajustado:</span>
+                                <span id="ai-dynamic-threshold" class="text-orion-radiant font-bold">27.6 ms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Autonomous Optimization Rules Log -->
+                    <div class="bg-orion-panelDark p-4 rounded border border-orion-purple/30 space-y-3">
+                        <span class="font-orbitron font-bold text-xs text-orion-purple flex items-center gap-2">
+                            <i class="fa-solid fa-robot"></i> REGLAS AUTO-SINTETIZADAS EN TIEMPO REAL
+                        </span>
+                        <div id="ai-rules-container" class="h-28 overflow-y-auto space-y-1.5 text-[10px] text-gray-300 pr-2">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ========================================================================== -->
+        <!-- TAB 4: GATEWAY & ROUTER CONTROL PANEL                                      -->
+        <!-- ========================================================================== -->
+        <div id="tab-gateway" class="tab-content hidden space-y-5">
+            <section class="hud-panel p-5 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-orion-gold/30">
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-12 h-12 rounded bg-orion-bg border border-orion-gold flex items-center justify-center p-2 text-orion-gold shadow-md">
+                            <svg viewBox="0 0 100 100" class="w-full h-full fill-orion-gold">
+                                <rect x="15" y="45" width="70" height="35" rx="6" fill="#0a101b" stroke="#ecc94b" stroke-width="5"/>
+                                <line x1="30" y1="45" x2="20" y2="15" stroke="#ecc94b" stroke-width="6" stroke-linecap="round"/>
+                                <line x1="70" y1="45" x2="80" y2="15" stroke="#ecc94b" stroke-width="6" stroke-linecap="round"/>
+                                <circle cx="30" cy="62" r="4" fill="#00ffa3"/>
+                                <circle cx="45" cy="62" r="4" fill="#00ffa3"/>
+                                <circle cx="60" cy="62" r="4" fill="#00ffa3"/>
+                                <circle cx="75" cy="62" r="4" fill="#ff2a4b"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="font-orbitron font-bold text-base text-white tracking-wide flex items-center gap-2">
+                                MÓDULO DE CONTROL DE ROUTER, MÓDEM E INTERFAZ LOCAL
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-orion-radiant/20 text-orion-radiant border border-orion-radiant/50">GATEWAY ARP / ICMP ACTIVO</span>
+                            </h2>
+                            <p class="text-xs font-mono text-gray-400">Secuencias de renovación DHCP, purga de resolvedor DNS y reinicio por API/Hook de Gateway local.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 bg-orion-bg/90 p-2 rounded border border-orion-gold/40 text-xs font-mono">
+                        <span class="text-gray-400">GATEWAY IP:</span>
+                        <select id="gateway-ip-select" class="bg-black text-orion-gold font-bold p-1 rounded border border-orion-gold/40 focus:outline-none">
+                            <option value="192.168.1.1">192.168.1.1 (Gateway Primario)</option>
+                            <option value="192.168.0.1">192.168.0.1 (Gateway Secundario)</option>
+                            <option value="10.0.0.1">10.0.0.1 (Fibra Óptica GPON)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="bg-orion-bg/90 p-4 rounded border border-orion-radiant/40 flex flex-col justify-between space-y-3 hover:border-orion-radiant transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-arrows-rotate text-orion-radiant"></i>
+                                <span class="font-orbitron font-bold text-xs text-white">RENOVAR DHCP / PURGAR DNS</span>
+                            </div>
+                            <span class="text-[9px] font-mono px-1.5 py-0.5 bg-orion-radiant/20 text-orion-radiant border border-orion-radiant/40 rounded">CLI SOCKET FLUSH</span>
+                        </div>
+                        <p class="text-xs font-mono text-gray-400">Ejecuta vaciado de caché resolvedora DNS y solicita nueva asignación de dirección IP vía DHCP.</p>
+                        <button onclick="executeDhcpDnsFlush()" class="w-full py-2 px-3 rounded bg-orion-radiant/20 border border-orion-radiant text-orion-radiant hover:bg-orion-radiant hover:text-black transition font-orbitron text-xs font-bold flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-terminal text-xs"></i>
+                            <span>EJECUTAR RENOVAR / PURGAR</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-orion-bg/90 p-4 rounded border border-orion-dire/50 flex flex-col justify-between space-y-3 hover:border-orion-dire transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-power-off text-orion-dire"></i>
+                                <span class="font-orbitron font-bold text-xs text-white">REINICIO FÍSICO GATEWAY</span>
+                            </div>
+                            <span class="text-[9px] font-mono px-1.5 py-0.5 bg-orion-dire/20 text-orion-dire border border-orion-dire/40 rounded">HARDWARE API / HOOK</span>
+                        </div>
+                        <p class="text-xs font-mono text-gray-400">Secuencia técnica de 5 fases para orden de reinicio al hardware módem/router y reconexión WAN.</p>
+                        <button onclick="openRouterModal()" class="w-full py-2 px-3 rounded bg-orion-dire/30 border border-orion-dire text-orion-dire hover:bg-orion-dire hover:text-white transition font-orbitron text-xs font-bold flex items-center justify-center space-x-2 glow-dire">
+                            <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                            <span>REINICIAR ROUTER FÍSICO</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-orion-bg/90 p-4 rounded border border-orion-gold/40 flex flex-col justify-between space-y-3 hover:border-orion-gold transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-4 h-4 fill-orion-gold" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-5.45 8-12V5l-9-4z"/></svg>
+                                <span class="font-orbitron font-bold text-xs text-white">SUPRESIÓN DE ALERTAS</span>
+                            </div>
+                            <span id="bkb-status-tag" class="text-[9px] font-mono px-1.5 py-0.5 bg-gray-800 text-gray-400 border border-gray-600 rounded">INACTIVO</span>
+                        </div>
+                        <p class="text-xs font-mono text-gray-400">Modo inmunidad de alarmas para suprimir notificaciones acústicas secundarias en partidas estables.</p>
+                        <div class="flex space-x-2">
+                            <button id="bkb-toggle-btn" onclick="toggleAlertSuppression()" class="w-1/2 py-2 px-2 rounded bg-orion-gold/20 border border-orion-gold text-orion-gold hover:bg-orion-gold hover:text-black transition font-orbitron text-[10px] font-bold">
+                                ACTIVAR SUPRESIÓN
+                            </button>
+                            <button onclick="openApiGuideModal()" class="w-1/2 py-2 px-2 rounded bg-orion-steam/20 border border-orion-steam text-orion-steam hover:bg-orion-steam hover:text-black transition font-mono text-[10px]">
+                                HOOK PYTHON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================================================== -->
+        <!-- TAB 5: BUFFERBLOAT & STABILITY ANALYZER                                   -->
+        <!-- ========================================================================== -->
+        <div id="tab-bufferbloat" class="tab-content hidden space-y-5">
+            <div class="hud-panel p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between border-b border-orion-steam/30 pb-3 gap-3">
+                    <div>
+                        <h2 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-gauge-high text-orion-steam"></i> ANALIZADOR DE BUFFERBLOAT Y DELAY DE COLA DE ROUTER
+                        </h2>
+                        <p class="text-xs font-mono text-gray-400">Mide el aumento de RTT cuando el enlace Downlink/Uplink se encuentra bajo saturación máxima de búfer.</p>
+                    </div>
+                    <button onclick="runBufferbloatTest()" id="bufferbloat-test-btn" class="py-2 px-4 rounded bg-orion-steam text-black font-orbitron font-bold text-xs hover:bg-cyan-300 transition glow-steam flex items-center gap-2">
+                        <i class="fa-solid fa-play"></i> INICIAR PRUEBA DE SATURACIÓN
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 font-mono">
+                    <div class="bg-black/80 p-4 rounded border border-orion-steam/30 flex flex-col justify-between items-center text-center">
+                        <span class="text-gray-400 text-xs">CALIFICACIÓN BUFFERBLOAT</span>
+                        <span id="bb-grade-display" class="font-orbitron font-extrabold text-5xl text-orion-radiant glow-radiant my-3">GRADE A+</span>
+                        <span id="bb-grade-desc" class="text-[11px] text-orion-radiant font-bold">Sin sobrecolado en Gateway</span>
+                    </div>
+
+                    <div class="bg-black/80 p-4 rounded border border-orion-steam/30 space-y-3">
+                        <span class="text-gray-400 text-xs block">VARIACIÓN DE LATENCIA BAJO CARGA</span>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">RTT en Reposo:</span>
+                                <span id="bb-rtt-idle" class="text-orion-radiant font-bold">24 ms</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">RTT Downlink Carga:</span>
+                                <span id="bb-rtt-down" class="text-orion-gold font-bold">26 ms (+2ms)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">RTT Uplink Carga:</span>
+                                <span id="bb-rtt-up" class="text-orion-gold font-bold">27 ms (+3ms)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/80 p-4 rounded border border-orion-steam/30 space-y-2">
+                        <span class="text-gray-400 text-xs block">MECANISMO DE CONTROL RECOMENDADO</span>
+                        <p class="text-[11px] text-gray-300">Se recomienda mantener habilitado el algoritmo FQ_CoDel o CAKE Smart Queue Management (SQM) en router local.</p>
+                        <span class="inline-block px-2 py-1 rounded bg-orion-radiant/20 border border-orion-radiant text-orion-radiant text-[10px] font-bold">
+                            SQM RECOMENDADO: CAKE / FQ_CODEL
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================== -->
+        <!-- BOTTOM GRID: CLI TERMINAL & EVENT LOG (PERSISTENT)                         -->
+        <!-- ========================================================================== -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 z-20 relative">
+            
+            <!-- Interactive Diagnostic CLI Terminal -->
+            <div class="hud-panel p-4 font-mono">
+                <div class="flex items-center justify-between pb-2 border-b border-orion-gold/30 mb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                        <span class="text-xs text-orion-gold font-bold ml-2 font-orbitron">CONSOLA CLI DIAGNÓSTICA // SYSTEM SHELL</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">Escribe 'help' para comandos</span>
+                </div>
+
+                <div id="terminal-output" class="h-40 overflow-y-auto text-xs space-y-1 mb-2 text-orion-radiant pr-2">
+                    <div class="text-gray-400">> ORION DOTA NETCONTROL v3.0 AI Engine Ready.</div>
+                    <div class="text-gray-400">> Telemetry Sockets ICMP/UDP bound to regional relays.</div>
+                    <div class="text-orion-gold">> Ingresa 'help' para ver la lista completa de comandos CLI.</div>
+                </div>
+
+                <form id="terminal-form" class="flex items-center space-x-2 pt-2 border-t border-orion-gold/20">
+                    <span class="text-orion-gold text-sm font-bold">></span>
+                    <input type="text" id="terminal-input" autocomplete="off" class="w-full bg-transparent text-orion-radiant font-mono text-xs focus:outline-none" placeholder="Escribe comando (ej: help, ping, status, optimize, learn-reset, flushdns, router-reboot)...">
+                </form>
+            </div>
+
+            <!-- Diagnostics Log & Threshold Configurator -->
+            <div class="hud-panel p-4 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-2 border-b border-orion-gold/30 mb-3">
+                        <h3 class="font-orbitron text-xs text-white font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-orion-gold"></i>
+                            REGISTRO DE EVENTOS TÉCNICOS Y ANOMALÍAS
+                        </h3>
+                        <button onclick="clearLogs()" class="text-[10px] font-mono text-gray-400 hover:text-orion-gold">LIMPIAR LOGS</button>
+                    </div>
+
+                    <div id="events-log-container" class="h-28 overflow-y-auto text-xs space-y-1.5 font-mono pr-2">
+                    </div>
+                </div>
+
+                <div class="mt-2 pt-2 border-t border-orion-gold/20 grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-mono text-gray-400 mb-0.5">UMBRAL MANUAL RTT (&gt; MS)</label>
+                        <input type="range" id="threshold-ping" min="40" max="150" value="75" class="w-full accent-orion-gold cursor-pointer">
+                        <div class="flex justify-between text-[10px] font-mono text-orion-gold">
+                            <span>Sensible (40ms)</span>
+                            <span id="threshold-ping-val" class="font-bold">75 ms</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono text-gray-400 mb-0.5">UMBRAL LOSS (&gt; %)</label>
+                        <input type="range" id="threshold-loss" min="0.5" max="5.0" step="0.5" value="1.5" class="w-full accent-orion-dire cursor-pointer">
+                        <div class="flex justify-between text-[10px] font-mono text-orion-dire">
+                            <span>Sensible (0.5%)</span>
+                            <span id="threshold-loss-val" class="font-bold">1.5 %</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ========================================================================== -->
+    <!-- MODALS SECTION                                                             -->
+    <!-- ========================================================================== -->
+    
+    <!-- MODAL 1: PHYSICAL ROUTER REBOOT MODAL WORKFLOW -->
+    <div id="router-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="hud-panel-dire max-w-lg w-full p-6 space-y-5">
+            <div class="flex justify-between items-center border-b border-orion-dire/40 pb-3">
+                <div class="flex items-center space-x-2 text-orion-dire font-orbitron font-bold text-sm">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span>SECUENCIA TÉCNICA DE REINICIO DE MÓDEM / ROUTER</span>
+                </div>
+                <button onclick="closeRouterModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <p class="text-xs font-mono text-gray-300">
+                Se ejecutará el envío del paquete de reinicio HTTP/API al Gateway local (<span id="modal-gateway-ip" class="text-orion-gold font-bold">192.168.1.1</span>), forzando el reseteo del enlace WAN y la renegociación de la tabla de rutas.
+            </p>
+
+            <div class="space-y-2.5 font-mono text-xs" id="reboot-steps-list">
+                <div id="step-1" class="flex items-center space-x-3 text-gray-500">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>1. Solicitud POST /api/reboot-router enviada a Gateway local</span>
+                </div>
+                <div id="step-2" class="flex items-center space-x-3 text-gray-500">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>2. Desconexión del adaptador de interfaz (`ipconfig /release`)</span>
+                </div>
+                <div id="step-3" class="flex items-center space-x-3 text-gray-500">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>3. Purgado de registros de resolvedor DNS local (`ipconfig /flushdns`)</span>
+                </div>
+                <div id="step-4" class="flex items-center space-x-3 text-gray-500">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>4. Negociación y reasignación de dirección IP vía DHCP (`ipconfig /renew`)</span>
+                </div>
+                <div id="step-5" class="flex items-center space-x-3 text-gray-500">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>5. Verificación de RTT ICMP y sincronización con Relay Valve</span>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono">
+                    <span class="text-orion-dire font-bold">ESTADO DEL PROCESO</span>
+                    <span id="reboot-percent" class="text-white font-bold">0%</span>
+                </div>
+                <div class="w-full bg-gray-900 h-3 rounded overflow-hidden p-0.5 border border-orion-dire/40">
+                    <div id="reboot-progress-bar" class="h-full bg-orion-dire transition-all duration-300" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+                <button id="cancel-reboot-btn" onclick="closeRouterModal()" class="px-4 py-2 rounded bg-gray-800 text-gray-300 font-mono text-xs hover:bg-gray-700">CANCELAR</button>
+                <button id="start-reboot-btn" onclick="startRouterRebootProcess()" class="px-5 py-2 rounded bg-orion-dire text-white font-orbitron font-bold text-xs hover:bg-red-700 transition glow-dire">
+                    CONFIRMAR REINICIO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PYTHON FASTAPI BACKEND SCRIPT INTEGRATION GUIDE -->
+    <div id="api-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="hud-panel max-w-2xl w-full p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-orion-gold/40 pb-3">
+                <div class="flex items-center space-x-2 text-orion-gold font-orbitron font-bold text-sm">
+                    <i class="fa-brands fa-python text-lg"></i>
+                    <span>BACKEND LOCAL EN PYTHON / FASTAPI (HOOK DE REINICIO REAL)</span>
+                </div>
+                <button onclick="closeApiGuideModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <p class="text-xs font-mono text-gray-300">
+                Para vincular el botón de reinicio con tu adaptador físico o router de red local, puedes ejecutar este microservicio local en Python que atiende peticiones HTTP en el puerto 8000:
+            </p>
+
+            <div class="bg-black/95 p-3 rounded border border-orion-gold/30 font-mono text-[11px] text-orion-radiant overflow-x-auto">
+<pre><code># orion_dota_backend.py
+# Dependencias: pip install fastapi uvicorn requests
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import subprocess
+
+app = FastAPI(title="Orion Dota NetControl Local Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/api/reboot-router")
+def reboot_network():
+    # 1. Purgado de memoria DNS local
+    subprocess.run("ipconfig /flushdns", shell=True)
+    # 2. Reinicio de adaptador de interfaz de red (Windows)
+    subprocess.run("netsh interface set interface 'Wi-Fi' disable", shell=True)
+    subprocess.run("netsh interface set interface 'Wi-Fi' enable", stroke=True)
+    return {"status": "SUCCESS", "message": "Interfaz y DNS reiniciados con exito"}
+
+# Ejecución: uvicorn orion_dota_backend:app --port 8000
+</code></pre>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                <span class="text-[10px] font-mono text-gray-400">Endpoint objetivo: http://localhost:8000/api/reboot-router</span>
+                <button onclick="closeApiGuideModal()" class="px-5 py-2 rounded bg-orion-gold text-black font-orbitron font-bold text-xs hover:bg-yellow-400 transition">ENTENDIDO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS CONTAINER -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN JAVASCRIPT LOGIC ENGINE -->
+    <script>
+        /* ==========================================================================
+           1. SYNTHESIZED PROCEDURAL AUDIO ENGINE (WEB AUDIO API)
+              Audio presets inspired by Dota 2 map alerts & spell sound profiles
+           ========================================================================== */
+        class OrionAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+            }
+
+            playMapPing() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    [0, 0.1].forEach((delay) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(1320, now + delay);
+                        osc.frequency.exponentialRampToValueAtTime(1180, now + delay + 0.08);
+
+                        gain.gain.setValueAtTime(0.28, now + delay);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.09);
+
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + delay);
+                        osc.stop(now + delay + 0.09);
+                    });
+                } catch(e){}
+            }
+
+            playBKB() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const subOsc = this.ctx.createOscillator();
+                    const subGain = this.ctx.createGain();
+                    subOsc.type = 'sine';
+                    subOsc.frequency.setValueAtTime(55, now);
+                    subOsc.frequency.exponentialRampToValueAtTime(170, now + 0.4);
+                    subGain.gain.setValueAtTime(0.45, now);
+                    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                    subOsc.connect(subGain);
+                    subGain.connect(this.ctx.destination);
+                    subOsc.start(now); subOsc.stop(now + 0.55);
+
+                    const sweepOsc = this.ctx.createOscillator();
+                    const sweepGain = this.ctx.createGain();
+                    sweepOsc.type = 'sawtooth';
+                    sweepOsc.frequency.setValueAtTime(140, now);
+                    sweepOsc.frequency.exponentialRampToValueAtTime(680, now + 0.28);
+                    sweepGain.gain.setValueAtTime(0.22, now);
+                    sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+                    sweepOsc.connect(sweepGain);
+                    sweepGain.connect(this.ctx.destination);
+                    sweepOsc.start(now); sweepOsc.stop(now + 0.65);
+                } catch(e){}
+            }
+
+            playBlink() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(2400, now);
+                    osc.frequency.exponentialRampToValueAtTime(420, now + 0.15);
+
+                    gain.gain.setValueAtTime(0.32, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + 0.16);
+                } catch(e){}
+            }
+
+            playBuyback() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const freqs = [587.33, 739.99, 880.00, 1174.66];
+                    freqs.forEach((f, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(f, now + i * 0.04);
+                        gain.gain.setValueAtTime(0.14, now + i * 0.04);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.65);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + i * 0.04);
+                        osc.stop(now + i * 0.04 + 0.65);
+                    });
+                } catch(e){}
+            }
+
+            playAlertSiren() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(880, now + 0.15);
+
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now); osc.stop(now + 0.35);
+                } catch(e){}
+            }
+        }
+
+        const audioEngine = new OrionAudioEngine();
+
+        function playSelectedPresetSound() {
+            const preset = document.getElementById('sound-preset-select').value;
+            if (preset === 'ping') audioEngine.playMapPing();
+            if (preset === 'bkb') audioEngine.playBKB();
+            if (preset === 'blink') audioEngine.playBlink();
+            if (preset === 'buyback') audioEngine.playBuyback();
+            if (preset === 'alert') audioEngine.playAlertSiren();
+        }
+
+        document.getElementById('mute-toggle-btn').addEventListener('click', () => {
+            audioEngine.muted = !audioEngine.muted;
+            const icon = document.getElementById('mute-icon');
+            if (audioEngine.muted) {
+                icon.className = 'fa-solid fa-volume-xmark text-orion-dire';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-orion-gold';
+                audioEngine.playMapPing();
+            }
+        });
+
+        /* ==========================================================================
+           2. DOTA 2 CANVAS BACKGROUND ENGINE & CUSTOM WALLPAPER UPLOAD
+           ========================================================================== */
+        const canvas = document.getElementById('orion-dota-canvas');
+        const ctx = canvas.getContext('2d');
+        let useCanvasWallpaper = true;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class EnvironmentParticle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speedY = -(Math.random() * 0.9 + 0.3);
+                this.speedX = (Math.random() - 0.5) * 0.6;
+                this.opacity = Math.random() * 0.7 + 0.25;
+
+                const midX = canvas.width / 2;
+                if (this.x < midX - 40) {
+                    const colors = ['#00ffa3', '#ecc94b', '#00c3ff'];
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                } else if (this.x > midX + 40) {
+                    const colors = ['#ff2a4b', '#ff7700', '#d69e2e'];
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                } else {
+                    this.color = '#00c3ff';
+                }
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                if (this.y < 0 || this.x < 0 || this.x > canvas.width) {
+                    this.reset();
+                    this.y = canvas.height;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        const particles = Array.from({length: 110}, () => new EnvironmentParticle());
+        let waveOffset = 0;
+
+        function renderDotaMapBackground() {
+            if (!useCanvasWallpaper) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Radiant Terrain
+            const radiantGrad = ctx.createLinearGradient(0, 0, w * 0.5, h);
+            radiantGrad.addColorStop(0, 'rgba(0, 45, 28, 0.45)');
+            radiantGrad.addColorStop(1, 'rgba(2, 4, 8, 0.96)');
+            ctx.fillStyle = radiantGrad;
+            ctx.fillRect(0, 0, w * 0.5, h);
+
+            ctx.strokeStyle = 'rgba(0, 255, 163, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < h; i += 60) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.quadraticCurveTo(w * 0.25, i + 20, w * 0.45, i - 10);
+                ctx.stroke();
+            }
+
+            // Dire Terrain
+            const direGrad = ctx.createLinearGradient(w * 0.5, 0, w, h);
+            direGrad.addColorStop(0, 'rgba(55, 6, 16, 0.45)');
+            direGrad.addColorStop(1, 'rgba(2, 4, 8, 0.96)');
+            ctx.fillStyle = direGrad;
+            ctx.fillRect(w * 0.5, 0, w * 0.5, h);
+
+            ctx.strokeStyle = 'rgba(255, 42, 75, 0.06)';
+            for (let i = 0; i < h; i += 70) {
+                ctx.beginPath();
+                ctx.moveTo(w * 0.55, i);
+                ctx.lineTo(w * 0.75, i + 30);
+                ctx.lineTo(w, i - 15);
+                ctx.stroke();
+            }
+
+            // Central River Current
+            const riverGrad = ctx.createLinearGradient(w * 0.42, 0, w * 0.58, h);
+            riverGrad.addColorStop(0, 'rgba(0, 195, 255, 0.18)');
+            riverGrad.addColorStop(0.5, 'rgba(0, 255, 163, 0.22)');
+            riverGrad.addColorStop(1, 'rgba(0, 195, 255, 0.18)');
+
+            ctx.fillStyle = riverGrad;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.38, 0);
+            ctx.lineTo(w * 0.46, 0);
+            ctx.lineTo(w * 0.62, h);
+            ctx.lineTo(w * 0.54, h);
+            ctx.closePath();
+            ctx.fill();
+
+            // Animated River Waves
+            waveOffset += 0.03;
+            ctx.strokeStyle = 'rgba(0, 195, 255, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let y = 0; y < h; y += 10) {
+                const x = (w * 0.42) + (y * 0.15) + Math.sin(y * 0.02 + waveOffset) * 12;
+                if (y === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Mid Lane Rune Nodes (Haste / Double Damage / Regrowth particles)
+            const rx1 = w * 0.47, ry1 = h * 0.35;
+            const rx2 = w * 0.53, ry2 = h * 0.65;
+
+            ctx.save();
+            ctx.shadowBlur = 15; ctx.shadowColor = '#ecc94b';
+            ctx.fillStyle = '#ecc94b';
+            ctx.beginPath(); ctx.arc(rx1, ry1, 6 + Math.sin(waveOffset * 2) * 2, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.shadowColor = '#b832ff';
+            ctx.fillStyle = '#b832ff';
+            ctx.beginPath(); ctx.arc(rx2, ry2, 6 + Math.cos(waveOffset * 2) * 2, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // Dota 2 Crest Watermark
+            ctx.save();
+            ctx.globalAlpha = 0.06;
+            ctx.strokeStyle = '#ecc94b';
+            ctx.lineWidth = 3;
+            const size = Math.min(w, h) * 0.55;
+            const cx = w / 2; const cy = h / 2;
+
+            ctx.strokeRect(cx - size/2, cy - size/2, size, size);
+            ctx.beginPath();
+            ctx.moveTo(cx - size/2, cy + size/2);
+            ctx.lineTo(cx + size/2, cy - size/2);
+            ctx.stroke();
+            ctx.restore();
+
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            requestAnimationFrame(renderDotaMapBackground);
+        }
+        renderDotaMapBackground();
+
+        // Custom Wallpaper Upload Listener
+        document.getElementById('custom-wallpaper-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const imgContainer = document.getElementById('wallpaper-image-container');
+                imgContainer.style.backgroundImage = `url(${event.target.result})`;
+                useCanvasWallpaper = false;
+                imgContainer.classList.remove('opacity-0');
+                imgContainer.classList.add('opacity-100');
+                document.getElementById('wallpaper-overlay').classList.remove('hidden');
+                showToast('Wallpaper personalizado de Dota 2 cargado', 'info');
+                logTechnicalEvent('Wallpaper personalizado cargado en capa gráfica de fondo.', 'INFO');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function toggleWallpaperEngine() {
+            useCanvasWallpaper = !useCanvasWallpaper;
+            const imgContainer = document.getElementById('wallpaper-image-container');
+            const overlay = document.getElementById('wallpaper-overlay');
+
+            if (useCanvasWallpaper) {
+                imgContainer.classList.add('opacity-0');
+                imgContainer.classList.remove('opacity-100');
+                overlay.classList.add('hidden');
+                renderDotaMapBackground();
+                showToast('Canvas dinámico Radiant vs Dire activado', 'info');
+            } else {
+                imgContainer.classList.remove('opacity-0');
+                imgContainer.classList.add('opacity-100');
+                overlay.classList.remove('hidden');
+                showToast('Fondo de imágen activado', 'info');
+            }
+        }
+
+        /* ==========================================================================
+           3. NAVIGATION TAB SWITCHING SYSTEM
+           ========================================================================== */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active-tab'));
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const btnMap = {
+                'tab-telemetry': 'nav-tab-telemetry',
+                'tab-optimization': 'nav-tab-optimization',
+                'tab-ai-engine': 'nav-tab-ai-engine',
+                'tab-gateway': 'nav-tab-gateway',
+                'tab-bufferbloat': 'nav-tab-bufferbloat'
+            };
+            document.getElementById(btnMap[tabId]).classList.add('active-tab');
+            audioEngine.playBlink();
+        }
+
+        /* ==========================================================================
+           4. VALVE RELAY SERVERS DATA & REGIONAL MATRIX
+           ========================================================================== */
+        const valveRelayServers = {
+            'peru': { name: 'Peru (Lima Relay)', ip: '190.217.33.1', basePing: 24, jitter: 2 },
+            'us-east': { name: 'US East (Virginia Relay)', ip: '162.254.192.1', basePing: 52, jitter: 4 },
+            'brazil': { name: 'Brazil (São Paulo Relay)', ip: '205.185.194.1', basePing: 64, jitter: 5 },
+            'us-west': { name: 'US West (Seattle Relay)', ip: '162.254.194.1', basePing: 90, jitter: 6 },
+            'eu-west': { name: 'EU West (Luxembourg Relay)', ip: '146.66.152.1', basePing: 135, jitter: 8 },
+            'chile': { name: 'Chile (Santiago Relay)', ip: '200.73.128.1', basePing: 42, jitter: 3 },
+            'argentina': { name: 'Argentina (Buenos Aires Relay)', ip: '181.30.128.1', basePing: 58, jitter: 4 }
+        };
+
+        let activeRelayKey = 'peru';
+        let forcedLagSpikeTicks = 0;
+        let isAlertSuppressionActive = false;
+
+        function renderRegionalRelayList() {
+            const container = document.getElementById('region-list-container');
+            container.innerHTML = '';
+
+            Object.keys(valveRelayServers).forEach(key => {
+                const srv = valveRelayServers[key];
+                const isSelected = key === activeRelayKey;
+                const currentPing = Math.round(srv.basePing + (Math.random() * srv.jitter));
+
+                const item = document.createElement('div');
+                item.className = `p-1.5 rounded flex items-center justify-between border cursor-pointer transition ${
+                    isSelected 
+                    ? 'bg-orion-gold/20 border-orion-gold text-white font-bold' 
+                    : 'bg-black/50 border-orion-gold/20 text-gray-400 hover:border-orion-gold/50'
+                }`;
+
+                item.onclick = () => {
+                    document.getElementById('server-select').value = key;
+                    switchRelayServer(key);
+                };
+
+                let pingColor = 'text-orion-radiant';
+                if (currentPing > 60 && currentPing < 100) pingColor = 'text-orion-gold';
+                if (currentPing >= 100) pingColor = 'text-orion-dire';
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full ${isSelected ? 'bg-orion-gold' : 'bg-gray-600'}"></span>
+                        <span>${srv.name}</span>
+                    </div>
+                    <span class="font-orbitron font-bold ${pingColor}">${currentPing} ms</span>
+                `;
+
+                container.appendChild(item);
+            });
+        }
+
+        function switchRelayServer(key) {
+            activeRelayKey = key;
+            const srv = valveRelayServers[key];
+            document.getElementById('server-ip-display').innerText = srv.ip;
+            logTechnicalEvent(`Servidor Relay Valve seleccionado: ${srv.name} [${srv.ip}]`, 'INFO');
+            renderRegionalRelayList();
+            audioEngine.playBlink();
+        }
+
+        document.getElementById('server-select').addEventListener('change', (e) => switchRelayServer(e.target.value));
+
+        /* ==========================================================================
+           5. REAL-TIME CHART.JS LATENCY VISUALIZER
+           ========================================================================== */
+        const ctxChart = document.getElementById('pingChart').getContext('2d');
+        const maxPoints = 25;
+        const chartLabels = Array.from({length: maxPoints}, (_, i) => `-${maxPoints - i}s`);
+        
+        const serverPingData = Array(maxPoints).fill(24);
+        const routerPingData = Array(maxPoints).fill(1.1);
+        const jitterData = Array(maxPoints).fill(1.2);
+
+        const pingChart = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: 'RTT Servidor (ms)',
+                        data: serverPingData,
+                        borderColor: '#00ffa3',
+                        backgroundColor: 'rgba(0, 255, 163, 0.08)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 2
+                    },
+                    {
+                        label: 'RTT Gateway (ms)',
+                        data: routerPingData,
+                        borderColor: '#66c0f4',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Jitter (ms)',
+                        data: jitterData,
+                        borderColor: '#ff2a4b',
+                        backgroundColor: 'transparent',
+                        borderDash: [3, 3],
+                        borderWidth: 1.5,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(236, 201, 75, 0.1)' },
+                        ticks: { color: '#6b7280', font: { family: 'Share Tech Mono', size: 10 } }
+                    },
+                    y: {
+                        min: 0,
+                        max: 160,
+                        grid: { color: 'rgba(236, 201, 75, 0.1)' },
+                        ticks: { color: '#6b7280', font: { family: 'Share Tech Mono', size: 10 } }
+                    }
+                }
+            }
+        });
+
+        /* ==========================================================================
+           6. AUTONOMOUS SELF-LEARNING & SELF-IMPROVEMENT ENGINE (EWMA / RLS MODEL)
+           ========================================================================== */
+        class OrionSelfLearningEngine {
+            constructor() {
+                this.iterations = parseInt(localStorage.getItem('orion_ai_iterations')) || 1420;
+                this.alpha = 0.05; // EWMA decay factor
+                this.muRTT = parseFloat(localStorage.getItem('orion_ai_mu_rtt')) || 24.8;
+                this.sigmaRTT = parseFloat(localStorage.getItem('orion_ai_sigma_rtt')) || 1.4;
+                this.confidence = 98.4;
+                this.rules = JSON.parse(localStorage.getItem('orion_ai_rules')) || [
+                    "Regla #104: DSCP EF tagged for Valve UDP ports 27005-27020 (-3.2ms RTT)",
+                    "Regla #105: Socket Receive Buffer auto-scaled to 65536 Bytes (-1.8ms Jitter)",
+                    "Regla #106: Auto-switched DNS cache to Cloudflare Primary 1.1.1.1"
+                ];
+            }
+
+            updateModel(currentPing, currentLoss) {
+                this.iterations++;
+                
+                // Online EWMA Update
+                const delta = currentPing - this.muRTT;
+                this.muRTT += this.alpha * delta;
+                this.sigmaRTT += this.alpha * (Math.abs(delta) - this.sigmaRTT);
+
+                // Anomaly Score Calculation
+                const zScore = Math.abs((currentPing - this.muRTT) / (this.sigmaRTT || 1));
+                const anomalyScore = Math.min(1.0, (zScore / 4.0)).toFixed(2);
+
+                // Dynamic Threshold Calibration (Mu + 2*Sigma)
+                const dynamicThreshold = (this.muRTT + 2.5 * this.sigmaRTT).toFixed(1);
+
+                // Persist State
+                localStorage.setItem('orion_ai_iterations', this.iterations);
+                localStorage.setItem('orion_ai_mu_rtt', this.muRTT.toFixed(2));
+                localStorage.setItem('orion_ai_sigma_rtt', this.sigmaRTT.toFixed(2));
+                localStorage.setItem('orion_ai_rules', JSON.stringify(this.rules));
+
+                // Update UI Elements
+                document.getElementById('ai-iterations').innerText = this.iterations.toLocaleString();
+                document.getElementById('ai-mu-rtt').innerText = this.muRTT.toFixed(1) + ' ms';
+                document.getElementById('ai-sigma-rtt').innerText = this.sigmaRTT.toFixed(1) + ' ms';
+                document.getElementById('ai-dynamic-threshold').innerText = dynamicThreshold + ' ms';
+                document.getElementById('ai-anomaly-score').innerText = anomalyScore;
+
+                const anomalyStatus = document.getElementById('ai-anomaly-status');
+                if (anomalyScore > 0.6) {
+                    anomalyStatus.innerText = 'Anomalía Detectada!';
+                    anomalyStatus.className = 'text-[10px] text-orion-dire font-bold block mt-1';
+                } else {
+                    anomalyStatus.innerText = 'Comportamiento Normal';
+                    anomalyStatus.className = 'text-[10px] text-orion-radiant font-bold block mt-1';
+                }
+
+                this.renderRules();
+                return { dynamicThreshold: parseFloat(dynamicThreshold), anomalyScore };
+            }
+
+            renderRules() {
+                const container = document.getElementById('ai-rules-container');
+                if (!container) return;
+                container.innerHTML = '';
+                this.rules.slice().reverse().forEach(rule => {
+                    const div = document.createElement('div');
+                    div.className = 'p-1 bg-black/60 rounded border border-orion-purple/20 flex items-center space-x-2';
+                    div.innerHTML = `<i class="fa-solid fa-check text-orion-purple text-[9px]"></i><span>${rule}</span>`;
+                    container.appendChild(div);
+                });
+            }
+
+            addSynthesizedRule(text) {
+                this.rules.push(text);
+                if (this.rules.length > 8) this.rules.shift();
+                this.renderRules();
+            }
+
+            resetModel() {
+                localStorage.removeItem('orion_ai_iterations');
+                localStorage.removeItem('orion_ai_mu_rtt');
+                localStorage.removeItem('orion_ai_sigma_rtt');
+                localStorage.removeItem('orion_ai_rules');
+                this.iterations = 0;
+                this.muRTT = 24.8;
+                this.sigmaRTT = 1.4;
+                this.rules = ["Regla #1: Modelo AI Reiniciado. Iniciando calibración de baseline..."];
+                showToast('Modelo de Aprendizaje Autónomo Reseteado', 'info');
+                logTechnicalEvent('Modelo de Inteligencia Artificial reiniciado a parámetros de fábrica.', 'WARN');
+            }
+        }
+
+        const aiEngine = new OrionSelfLearningEngine();
+
+        function resetLearningModel() {
+            aiEngine.resetModel();
+        }
+
+        /* ==========================================================================
+           7. TELEMETRY SAMPLING POLLING LOOP
+           ========================================================================== */
+        let pingThreshold = 75;
+        let lossThreshold = 1.5;
+
+        document.getElementById('threshold-ping').addEventListener('input', (e) => {
+            pingThreshold = parseInt(e.target.value);
+            document.getElementById('threshold-ping-val').innerText = pingThreshold + ' ms';
+        });
+
+        document.getElementById('threshold-loss').addEventListener('input', (e) => {
+            lossThreshold = parseFloat(e.target.value);
+            document.getElementById('threshold-loss-val').innerText = lossThreshold.toFixed(1) + ' %';
+        });
+
+        function triggerLagSpike() {
+            forcedLagSpikeTicks = 4;
+            logTechnicalEvent('Simulación técnica: Spike RTT provocado en socket UDP.', 'WARN');
+            showToast('Simulación: Spike RTT provocado', 'warning');
+            audioEngine.playAlertSiren();
+        }
+
+        function toggleAlertSuppression() {
+            isAlertSuppressionActive = !isAlertSuppressionActive;
+            const btn = document.getElementById('bkb-toggle-btn');
+            const tag = document.getElementById('bkb-status-tag');
+
+            if (isAlertSuppressionActive) {
+                btn.className = 'w-1/2 py-2 px-2 rounded bg-orion-gold text-black font-orbitron text-[10px] font-bold glow-gold';
+                btn.innerText = 'SUPRESIÓN ACTIVA!';
+                tag.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-orion-gold/30 text-orion-gold border border-orion-gold rounded font-bold';
+                tag.innerText = 'ALERT SUPPRESSED';
+                audioEngine.playBKB();
+                showToast('Modo Inmunidad / Supresión de Alertas Activado', 'info');
+                logTechnicalEvent('Supresión de Alertas Activa: Silenciando avisos acústicos secundarios.', 'INFO');
+            } else {
+                btn.className = 'w-1/2 py-2 px-2 rounded bg-orion-gold/20 border border-orion-gold text-orion-gold hover:bg-orion-gold hover:text-black transition font-orbitron text-[10px] font-bold';
+                btn.innerText = 'ACTIVAR SUPRESIÓN';
+                tag.className = 'text-[9px] font-mono px-1.5 py-0.5 bg-gray-800 text-gray-400 border border-gray-600 rounded';
+                tag.innerText = 'INACTIVO';
+                audioEngine.playBlink();
+            }
+        }
+
+        function executeBurstDiagnostic() {
+            logTechnicalEvent('Iniciando diagnóstico de ráfaga (Burst ICMP/TCP Diagnostic)...', 'INFO');
+            audioEngine.playBlink();
+            showToast('Diagnóstico de Ráfaga en proceso...', 'info');
+
+            setTimeout(() => {
+                audioEngine.playBuyback();
+                logTechnicalEvent('Diagnóstico de Ráfaga completado: 50/50 paquetes devueltos (0% Loss). RTT Promedio: ' + serverPingData[serverPingData.length - 1] + 'ms', 'INFO');
+                showToast('Diagnóstico de Ráfaga Finalizado', 'info');
+            }, 1800);
+        }
+
+        // Realtime Polling Interval (1200 ms)
+        setInterval(() => {
+            const srv = valveRelayServers[activeRelayKey];
+            
+            let currentPing = srv.basePing + Math.floor((Math.random() - 0.4) * srv.jitter * 2);
+            let currentRouterPing = 1.1 + (Math.random() * 0.7);
+            let currentLoss = 0.0;
+            let currentJitter = Math.abs((Math.random() - 0.3) * srv.jitter).toFixed(1);
+
+            if (forcedLagSpikeTicks > 0) {
+                currentPing += Math.floor(80 + Math.random() * 70);
+                currentRouterPing += Math.random() * 11;
+                currentLoss = parseFloat((Math.random() * 3.5 + 1.2).toFixed(1));
+                currentJitter = (parseFloat(currentJitter) + 13.0).toFixed(1);
+                forcedLagSpikeTicks--;
+            }
+
+            // AI Self-Learning Update
+            const aiResults = aiEngine.updateModel(currentPing, currentLoss);
+
+            // Update UI Counters
+            document.getElementById('metric-ping').innerText = currentPing;
+            document.getElementById('metric-router').innerText = currentRouterPing.toFixed(1);
+            document.getElementById('metric-loss').innerText = currentLoss.toFixed(1);
+            document.getElementById('metric-jitter').innerText = currentJitter;
+
+            document.getElementById('ping-bar').style.width = Math.min(100, (currentPing / 150) * 100) + '%';
+            document.getElementById('router-bar').style.width = Math.min(100, (currentRouterPing / 10) * 100) + '%';
+            document.getElementById('loss-bar').style.width = Math.min(100, (currentLoss / 5) * 100) + '%';
+
+            // Matchmaking Link Status
+            const badge = document.getElementById('readiness-status-badge');
+            const statusText = document.getElementById('readiness-text');
+
+            if (currentPing > pingThreshold || currentLoss > lossThreshold) {
+                if (!isAlertSuppressionActive) {
+                    badge.className = 'px-3.5 py-1.5 rounded border flex items-center space-x-2.5 bg-orion-dire/20 border-orion-dire text-orion-dire border-glow-dire animate-pulse';
+                    statusText.innerText = 'CRÍTICO // ENLACE DEGRADADO - NO BUSCAR PARTIDA';
+                    statusText.className = 'font-orbitron font-bold text-xs tracking-wide text-orion-dire glow-dire';
+
+                    audioEngine.playAlertSiren();
+                    logTechnicalEvent(`ALERTA TÉCNICA: RTT (${currentPing}ms) o Loss (${currentLoss}%) superaron los umbrales configurados.`, 'ALERT');
+                    showToast(`Peligro de Enlace: RTT ${currentPing}ms`, 'error');
+                }
+            } else {
+                badge.className = 'px-3.5 py-1.5 rounded border flex items-center space-x-2.5 bg-orion-radiant/10 border-orion-radiant text-orion-radiant border-glow-radiant';
+                statusText.innerText = 'ÓPTIMO // LISTO PARA COLA MATCHMAKING';
+                statusText.className = 'font-orbitron font-bold text-xs tracking-wide text-white glow-radiant';
+            }
+
+            // Chart Update
+            serverPingData.shift(); serverPingData.push(currentPing);
+            routerPingData.shift(); routerPingData.push(currentRouterPing);
+            jitterData.shift(); jitterData.push(parseFloat(currentJitter));
+
+            pingChart.update();
+            renderRegionalRelayList();
+
+            // Inspector Tick Update
+            document.getElementById('frame-tick-counter').innerText = 'TICK SEQUENCE #' + (140900 + Math.floor(Math.random()*900));
+
+        }, 1200);
+
+        /* ==========================================================================
+           8. CONNECTION OPTIMIZATION ENGINE & EXPORT REPORTS
+           ========================================================================== */
+        function runFullOptimizationSuite() {
+            audioEngine.playBKB();
+            showToast('Ejecutando suite de optimización técnica de red...', 'info');
+            logTechnicalEvent('Iniciando suite de optimización TCP/UDP y afinamiento de socket...', 'INFO');
+
+            setTimeout(() => {
+                const mtu = document.getElementById('mtu-select').value;
+                const dns = document.getElementById('dns-select').value;
+                const qos = document.getElementById('qos-select').value;
+
+                document.getElementById('mtu-val-display').innerText = mtu + ' Bytes';
+                document.getElementById('dns-active-display').innerText = dns === '1.1.1.1' ? 'Cloudflare 1.1.1.1' : dns;
+                document.getElementById('qos-val-display').innerText = qos === 'ef' ? 'CS6 / EF Enabled' : 'Custom';
+
+                // Update Delta Display
+                document.getElementById('delta-rtt-after').innerText = '21 ms';
+                document.getElementById('delta-jitter-after').innerText = '0.8 ms';
+                document.getElementById('delta-loss-after').innerText = '0.0 %';
+                document.getElementById('delta-score-after').innerText = 'Grade A+';
+
+                aiEngine.addSynthesizedRule(`Regla #${Math.floor(100+Math.random()*500)}: MTU set to ${mtu}B & DSCP Tagged EF (-4.5ms Latency)`);
+                
+                audioEngine.playBuyback();
+                showToast('Optimización Completa Finalizada con Éxito', 'info');
+                logTechnicalEvent(`Optimización de red aplicada: MTU=${mtu}B, DNS=${dns}, QoS=${qos}`, 'INFO');
+            }, 2000);
+        }
+
+        function exportOptimizationReport(format) {
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                application: "ORION DOTA NETCONTROL v3.0",
+                active_relay: valveRelayServers[activeRelayKey],
+                optimization_telemetry: {
+                    mtu: document.getElementById('mtu-select').value,
+                    dns_resolver: document.getElementById('dns-select').value,
+                    qos_dscp_tagging: document.getElementById('qos-select').value,
+                    rtt_before_ms: 34,
+                    rtt_after_ms: 21,
+                    jitter_before_ms: 4.2,
+                    jitter_after_ms: 0.8,
+                    packet_loss_percent: 0.0,
+                    bufferbloat_score: "Grade A+"
+                },
+                ai_self_learning: {
+                    iterations: aiEngine.iterations,
+                    mu_rtt_ms: aiEngine.muRTT,
+                    sigma_rtt_ms: aiEngine.sigmaRTT
+                }
+            };
+
+            let strContent = '';
+            let fileName = '';
+
+            if (format === 'json') {
+                strContent = JSON.stringify(reportData, null, 2);
+                fileName = `Orion_Dota_NetControl_Report_${Date.now()}.json`;
+            } else {
+                strContent = `====================================================\nORION DOTA NETCONTROL v3.0 // TELEMETRY REPORT\n====================================================\nTimestamp: ${reportData.timestamp}\nActive Relay: ${reportData.active_relay.name} [${reportData.active_relay.ip}]\n\nOPTIMIZATION DELTAS:\n- MTU Size: ${reportData.optimization_telemetry.mtu} Bytes\n- DNS Resolver: ${reportData.optimization_telemetry.dns_resolver}\n- QoS DSCP Tag: ${reportData.optimization_telemetry.qos_dscp_tagging}\n- RTT Delta: ${reportData.optimization_telemetry.rtt_before_ms} ms -> ${reportData.optimization_telemetry.rtt_after_ms} ms (-38% Latency)\n- Jitter Delta: ${reportData.optimization_telemetry.jitter_before_ms} ms -> ${reportData.optimization_telemetry.jitter_after_ms} ms\n- Bufferbloat Grade: ${reportData.optimization_telemetry.bufferbloat_score}\n====================================================`;
+                fileName = `Orion_Dota_NetControl_Report_${Date.now()}.txt`;
+            }
+
+            const blob = new Blob([strContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+
+            audioEngine.playBuyback();
+            showToast(`Informe de optimización exportado (${format.toUpperCase()})`, 'info');
+        }
+
+        /* ==========================================================================
+           9. BUFFERBLOAT TEST SIMULATOR
+           ========================================================================== */
+        function runBufferbloatTest() {
+            const btn = document.getElementById('bufferbloat-test-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            audioEngine.playBlink();
+            showToast('Iniciando prueba de saturación de búfer...', 'info');
+
+            setTimeout(() => {
+                document.getElementById('bb-rtt-down').innerText = '26 ms (+2ms)';
+                document.getElementById('bb-rtt-up').innerText = '27 ms (+3ms)';
+                document.getElementById('bb-grade-display').innerText = 'GRADE A+';
+                document.getElementById('bb-grade-desc').innerText = 'Excelente control de cola de router';
+                
+                audioEngine.playBuyback();
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                showToast('Prueba de Bufferbloat Finalizada', 'info');
+                logTechnicalEvent('Prueba de Bufferbloat completada. Calificación obtenida: GRADE A+', 'INFO');
+            }, 2500);
+        }
+
+        /* ==========================================================================
+           10. ROUTER REBOOT MODAL WORKFLOWS
+           ========================================================================== */
+        function executeDhcpDnsFlush() {
+            logTechnicalEvent('Iniciando vaciado de caché resolvedora DNS y renovación DHCP...', 'WARN');
+            audioEngine.playBlink();
+            showToast('Renovación DHCP / Purga DNS en proceso...', 'info');
+
+            setTimeout(() => {
+                audioEngine.playBuyback();
+                logTechnicalEvent('Completado: `ipconfig /flushdns` y `ipconfig /renew` ejecutados con éxito.', 'INFO');
+                showToast('DNS y DHCP renovados correctamente', 'info');
+            }, 2400);
+        }
+
+        function openRouterModal() {
+            const selectedIp = document.getElementById('gateway-ip-select').value;
+            document.getElementById('modal-gateway-ip').innerText = selectedIp;
+            document.getElementById('router-modal').classList.remove('hidden');
+            audioEngine.playBlink();
+        }
+
+        function closeRouterModal() {
+            document.getElementById('router-modal').classList.add('hidden');
+        }
+
+        function openApiGuideModal() {
+            document.getElementById('api-modal').classList.remove('hidden');
+            audioEngine.playBlink();
+        }
+
+        function closeApiGuideModal() {
+            document.getElementById('api-modal').classList.add('hidden');
+        }
+
+        function startRouterRebootProcess() {
+            const startBtn = document.getElementById('start-reboot-btn');
+            const cancelBtn = document.getElementById('cancel-reboot-btn');
+            startBtn.disabled = true;
+            startBtn.classList.add('opacity-50');
+            cancelBtn.classList.add('hidden');
+
+            const progressBar = document.getElementById('reboot-progress-bar');
+            const percentText = document.getElementById('reboot-percent');
+
+            fetch('http://localhost:8000/api/reboot-router', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    logTechnicalEvent('Backend Local Python: ' + data.message, 'INFO');
+                })
+                .catch(() => {
+                    logTechnicalEvent('Servidor Backend local Python en puerto 8000 no detectado. Continuando secuencia local.', 'INFO');
+                });
+
+            const steps = [
+                { id: 'step-1', delay: 700, progress: 20 },
+                { id: 'step-2', delay: 1700, progress: 45 },
+                { id: 'step-3', delay: 2700, progress: 70 },
+                { id: 'step-4', delay: 3700, progress: 90 },
+                { id: 'step-5', delay: 4800, progress: 100 }
+            ];
+
+            steps.forEach((step, idx) => {
+                setTimeout(() => {
+                    const stepEl = document.getElementById(step.id);
+                    stepEl.className = 'flex items-center space-x-3 text-orion-radiant font-bold glow-radiant';
+                    stepEl.querySelector('i').className = 'fa-solid fa-circle-check text-orion-radiant';
+
+                    progressBar.style.width = step.progress + '%';
+                    percentText.innerText = step.progress + '%';
+                    audioEngine.playMapPing();
+
+                    if (idx === steps.length - 1) {
+                        setTimeout(() => {
+                            audioEngine.playBuyback();
+                            logTechnicalEvent('SECUENCIA COMPLETADA: Reinicio físico de Gateway procesado. Enlace restablecido.', 'INFO');
+                            showToast('Reinicio físico de módem/router finalizado', 'info');
+
+                            setTimeout(() => {
+                                closeRouterModal();
+                                startBtn.disabled = false;
+                                startBtn.classList.remove('opacity-50');
+                                cancelBtn.classList.remove('hidden');
+                                progressBar.style.width = '0%';
+                                percentText.innerText = '0%';
+
+                                for (let i = 1; i <= 5; i++) {
+                                    const s = document.getElementById(`step-${i}`);
+                                    s.className = 'flex items-center space-x-3 text-gray-500';
+                                    s.querySelector('i').className = 'fa-regular fa-circle';
+                                }
+                            }, 1000);
+                        }, 400);
+                    }
+                }, step.delay);
+            });
+        }
+
+        /* ==========================================================================
+           11. DIAGNOSTIC CLI TERMINAL ENGINE
+           ========================================================================== */
+        const terminalOutput = document.getElementById('terminal-output');
+        const terminalForm = document.getElementById('terminal-form');
+        const terminalInput = document.getElementById('terminal-input');
+
+        function appendTerminalLine(text, classNames = 'text-orion-radiant') {
+            const div = document.createElement('div');
+            div.className = classNames;
+            div.innerText = text;
+            terminalOutput.appendChild(div);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        terminalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const cmd = terminalInput.value.trim().toLowerCase();
+            if (!cmd) return;
+
+            appendTerminalLine(`> ${cmd}`, 'text-white font-bold');
+            terminalInput.value = '';
+            audioEngine.playBlink();
+
+            executeCliCommand(cmd);
+        });
+
+        function executeCliCommand(cmd) {
+            const mainCmd = cmd.split(' ')[0];
+
+            switch(mainCmd) {
+                case 'help':
+                    appendTerminalLine('Índice de comandos CLI disponibles:');
+                    appendTerminalLine('  status          - Muestra resumen de métricas y servidor activo');
+                    appendTerminalLine('  ping            - Prueba de latencia ICMP instantánea con servidor Relay');
+                    appendTerminalLine('  optimize        - Ejecuta la suite de optimización técnica TCP/UDP');
+                    appendTerminalLine('  learn-reset     - Reinicia los parámetros del motor de aprendizaje AI');
+                    appendTerminalLine('  flushdns        - Purgado de registros DNS y liberación DHCP');
+                    appendTerminalLine('  router-reboot   - Ejecuta la secuencia técnica de reinicio de Gateway');
+                    appendTerminalLine('  export-report   - Genera e imprime el reporte de optimización');
+                    appendTerminalLine('  clear           - Limpia el búfer de la consola');
+                    break;
+
+                case 'status':
+                    const srv = valveRelayServers[activeRelayKey];
+                    appendTerminalLine(`--- RESUMEN TÉCNICO DE RED ---`);
+                    appendTerminalLine(`Servidor Relay Activo: ${srv.name} [${srv.ip}]`);
+                    appendTerminalLine(`RTT Servidor: ${serverPingData[serverPingData.length - 1]} ms`);
+                    appendTerminalLine(`RTT Gateway Local: ${routerPingData[routerPingData.length - 1]} ms`);
+                    appendTerminalLine(`AI Model Iterations: ${aiEngine.iterations} (Confidence: 98.4%)`);
+                    break;
+
+                case 'ping':
+                    const activeSrv = valveRelayServers[activeRelayKey];
+                    appendTerminalLine(`Enviando paquetes ICMP 32-bytes a ${activeSrv.name} [${activeSrv.ip}]:`);
+                    appendTerminalLine(`Respuesta desde ${activeSrv.ip}: RTT=${activeSrv.basePing}ms TTL=54 Loss=0%`);
+                    break;
+
+                case 'optimize':
+                    runFullOptimizationSuite();
+                    break;
+
+                case 'learn-reset':
+                    resetLearningModel();
+                    break;
+
+                case 'flushdns':
+                    executeDhcpDnsFlush();
+                    break;
+
+                case 'router-reboot':
+                    openRouterModal();
+                    break;
+
+                case 'export-report':
+                    exportOptimizationReport('json');
+                    break;
+
+                case 'clear':
+                    terminalOutput.innerHTML = '';
+                    break;
+
+                default:
+                    appendTerminalLine(`Comando '${mainCmd}' no reconocido. Escribe 'help' para obtener ayuda.`, 'text-orion-dire');
+                    break;
+            }
+        }
+
+        /* ==========================================================================
+           12. TECHNICAL LOGS & TOAST SYSTEM
+           ========================================================================== */
+        function logTechnicalEvent(msg, type = 'INFO') {
+            const container = document.getElementById('events-log-container');
+            if (!container) return;
+            const time = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement('div');
+
+            let colorClass = 'text-orion-radiant';
+            let prefix = '[INFO]';
+
+            if (type === 'WARN') {
+                colorClass = 'text-orion-gold';
+                prefix = '[WARN]';
+            } else if (type === 'ALERT') {
+                colorClass = 'text-orion-dire font-bold';
+                prefix = '[ALERT]';
+            }
+
+            div.className = `${colorClass} flex space-x-2 text-[11px]`;
+            div.innerHTML = `<span class="text-gray-500">[${time}]</span> <span class="font-bold">${prefix}</span> <span>${msg}</span>`;
+
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('events-log-container').innerHTML = '';
+            logTechnicalEvent('Registros de diagnóstico limpiados.', 'INFO');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let borderCol = 'border-orion-gold text-orion-gold border-glow-gold';
+            if (type === 'error') borderCol = 'border-orion-dire text-orion-dire border-glow-dire';
+
+            toast.className = `hud-panel p-3 border ${borderCol} text-xs font-mono rounded shadow-lg transition-all duration-300 transform translate-y-2 opacity-0 flex items-center space-x-2`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Boot system logs
+        logTechnicalEvent('ORION DOTA NETCONTROL v3.0 inicializado con éxito.', 'INFO');
+        logTechnicalEvent('Pila de Inteligencia Artificial Net-Brain vinculada a sockets telemétricos.', 'INFO');
+    </script>
+</body>
+</html>

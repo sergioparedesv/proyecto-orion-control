@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #010204;
+  color: #d1d5db;
+  font-family: "Rajdhani", sans-serif;
+  overflow-x: hidden;
+}
+
+.scanline-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.008), rgba(0, 0, 255, 0.01));
+  background-size: 100% 3px, 6px 100%;
+  opacity: 0.85;
+}
+body.match-mode .scanline-layer { display: none; }
+
+.hud-panel {
+  background: rgba(7, 12, 22, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.85);
+}
+.hud-panel-dire {
+  background: rgba(22, 7, 14, 0.92);
+  border: 1px solid rgba(255, 42, 75, 0.45);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.hud-panel-radiant {
+  background: rgba(5, 22, 16, 0.92);
+  border: 1px solid rgba(0, 255, 163, 0.45);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+
+.panel-title {
+  @apply font-orbitron text-xs font-bold tracking-wider text-orion-gold mb-3 flex items-center gap-2;
+}
+
+.glow-radiant { text-shadow: 0 0 10px rgba(0, 255, 163, 0.8); }
+.glow-dire { text-shadow: 0 0 10px rgba(255, 42, 75, 0.8); }
+.glow-gold { text-shadow: 0 0 10px rgba(212, 175, 55, 0.8); }
+.border-glow-gold { box-shadow: 0 0 12px rgba(212, 175, 55, 0.3); }
+
+.nav-tab-btn {
+  font-family: "Orbitron", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(3, 6, 12, 0.8);
+  color: #9ca3af;
+  transition: all 0.2s ease;
+}
+.nav-tab-btn:hover { border-color: #ecc94b; color: #ecc94b; }
+.nav-tab-btn.active-tab {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #ecc94b;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+.nav-tab-btn.upcoming { opacity: 0.55; }
+
+.toolbar-group {
+  @apply flex items-center gap-1.5 bg-orion-panelDark p-1.5 rounded border border-orion-gold/40;
+}
+.ctl-btn {
+  @apply px-2 py-1 rounded bg-orion-gold/10 border border-orion-gold/60 text-orion-gold font-bold transition;
+}
+.ctl-btn:hover { @apply bg-orion-gold text-black; }
+.ctl-btn.on { @apply bg-orion-gold text-black; }
+.ctl-btn:disabled { @apply opacity-40 cursor-not-allowed; }
+.ctl-select {
+  @apply bg-black text-orion-gold font-bold p-1 rounded border border-orion-gold/30 focus:outline-none text-xs;
+}
+
+/* Semáforo */
+.readiness-badge { transition: all 0.3s ease; }
+.readiness-badge[data-state="ready"] { @apply bg-orion-radiant/10 border-orion-radiant; }
+.readiness-badge[data-state="ready"] .readiness-dot { background: #00ffa3; box-shadow: 0 0 10px #00ffa3; }
+.readiness-badge[data-state="caution"] { @apply bg-orion-gold/10 border-orion-gold; }
+.readiness-badge[data-state="caution"] .readiness-dot { background: #ecc94b; box-shadow: 0 0 10px #ecc94b; }
+.readiness-badge[data-state="no_go"] { @apply bg-orion-dire/10 border-orion-dire; }
+.readiness-badge[data-state="no_go"] .readiness-dot { background: #ff2a4b; box-shadow: 0 0 10px #ff2a4b; }
+.readiness-badge[data-state="no_data"] { @apply bg-gray-500/10 border-gray-500; }
+.readiness-badge[data-state="no_data"] .readiness-dot { background: #9ca3af; }
+
+/* Estado de objetivos y segmentos */
+.st-ok { color: #00ffa3; }
+.st-degraded { color: #ecc94b; }
+.st-down, .st-no_go { color: #ff2a4b; }
+.st-icmp_blocked { color: #b832ff; }
+.st-no_data { color: #9ca3af; }
+
+.seg-node {
+  @apply p-4 text-center min-w-[120px];
+}
+.seg-link { @apply flex-1 h-1 rounded self-center min-w-[40px]; }
+.seg-link[data-state="ok"] { background: #00ffa3; box-shadow: 0 0 8px #00ffa3; }
+.seg-link[data-state="degraded"] { background: #ff2a4b; box-shadow: 0 0 8px #ff2a4b; }
+.seg-link[data-state="no_data"] { background: repeating-linear-gradient(90deg, #4b5563 0 8px, transparent 8px 14px); }
+
+.metric-label { @apply text-[10px] font-mono uppercase tracking-widest text-gray-400; }
+.metric-value { @apply font-orbitron text-2xl font-bold text-white; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #020408; }
+::-webkit-scrollbar-thumb { background: #d4af37; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #ff2a4b; }

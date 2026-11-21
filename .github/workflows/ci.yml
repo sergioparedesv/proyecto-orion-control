@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: fmt
+        run: cargo fmt --all -- --check
+      - name: clippy (núcleo)
+        run: cargo clippy -p orion-engine -p orion-probe -p orion-cli --all-targets -- -D warnings
+      - name: tests (núcleo)
+        run: cargo test -p orion-engine -p orion-probe -p orion-cli
+      - name: ICMP real a 127.0.0.1 (Windows, sin administrador)
+        if: runner.os == 'Windows'
+        run: cargo run -p orion-cli -- spike icmp 127.0.0.1 -n 3
+
+  app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: frontend
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+      - name: app (tests + bindings al día)
+        run: |
+          cargo test -p orion-netcontrol
+          cargo test -p orion-engine -p orion-probe
+          git diff --exit-code -- ui/src/bindings

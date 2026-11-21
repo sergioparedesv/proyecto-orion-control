@@ -1,0 +1,10 @@
+/target
+node_modules/
+ui/dist/
+*:Zone.Identifier
+src-tauri/gen/
+.env
+
+# Artefactos de Release (se generan con Release/construir.ps1)
+Release/orion-netcontrol/
+Release/instaladores/

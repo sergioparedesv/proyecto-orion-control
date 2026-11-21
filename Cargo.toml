@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = ["crates/orion-engine", "crates/orion-probe", "crates/orion-cli", "src-tauri"]
+# `cargo test` en la raíz prueba el núcleo; la app se compila con `cargo tauri dev/build`
+# o con `cargo test -p orion-netcontrol` (necesita haber compilado ui/ una vez).
+default-members = ["crates/orion-engine", "crates/orion-probe", "crates/orion-cli"]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.77"
+
+[workspace.dependencies]
+orion-engine = { path = "crates/orion-engine" }
+orion-probe = { path = "crates/orion-probe" }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "time", "sync"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ts-rs = "10.0"
+thiserror = "1.0"
+anyhow = "1.0"
+async-trait = "0.1"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+sha2 = "0.10"
+netdev = "0.31"
+clap = { version = "4.5", features = ["derive"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+directories = "5.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

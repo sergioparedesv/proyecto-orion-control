@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ORION NetControl",
+  "version": "0.4.0",
+  "identifier": "net.orion.netcontrol",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../ui/dist",
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../ui" },
+    "beforeBuildCommand": { "script": "npm run build", "cwd": "../ui" }
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "ORION NetControl — para Dota 2",
+        "width": 1360,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "shortDescription": "Diagnóstico de red para Dota 2",
+    "longDescription": "Mide RTT, jitter y pérdida hacia tu router, tu ISP y los relays de Valve; ubica dónde está el problema. No modifica ni lee nada del juego."
+  }
+}

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORION NetControl — Instrucciones</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6470;
+    --line: #e2e5ea; --accent: #2f6fde; --accent-soft: #e8f0fd;
+    --ok: #1f9d55; --warn: #c98a00; --bad: #d64545; --code-bg: #0f172a; --code-text: #e5e7eb;
+    --note-bg: #fff8e6; --note-line: #f0c65a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1116; --card: #161b22; --text: #e6edf3; --muted: #9aa5b1;
+      --line: #2a313b; --accent: #5b9bff; --accent-soft: #1a2a45;
+      --code-bg: #0a0d12; --code-text: #e5e7eb; --note-bg: #2a2410; --note-line: #8a6d1d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1116; --card: #161b22; --text: #e6edf3; --muted: #9aa5b1;
+    --line: #2a313b; --accent: #5b9bff; --accent-soft: #1a2a45;
+    --code-bg: #0a0d12; --code-text: #e5e7eb; --note-bg: #2a2410; --note-line: #8a6d1d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { padding: 8px 0 20px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); }
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 8px;
+  }
+  nav.toc a {
+    text-decoration: none; color: var(--accent); background: var(--accent-soft);
+    padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+  }
+  section.card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 22px 18px; margin: 18px 0;
+  }
+  h2 { margin: 0 0 12px; font-size: 1.35rem; }
+  h3 { margin: 22px 0 8px; font-size: 1.08rem; }
+  .muted { color: var(--muted); }
+  a { color: var(--accent); }
+
+  .choose { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .choose { grid-template-columns: 1fr; } }
+  .choose a {
+    display: block; text-decoration: none; color: var(--text);
+    border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px;
+  }
+  .choose a:hover { border-color: var(--accent); }
+  .choose b { display: block; font-size: 1.05rem; color: var(--accent); }
+
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; }
+  ol.steps > li {
+    counter-increment: s; position: relative; padding: 4px 0 18px 52px;
+    border-left: 2px solid var(--line); margin-left: 17px; padding-left: 34px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 4px; }
+  ol.steps > li::before {
+    content: counter(s); position: absolute; left: -18px; top: 0;
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 0.95rem;
+  }
+  ol.steps > li.done::before { content: "✓"; background: var(--ok); }
+  ol.steps > li > .title { font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  ol.steps label.chk { font-weight: 500; font-size: 0.85rem; color: var(--muted); cursor: pointer; user-select: none; }
+  ol.steps ul { margin: 6px 0; padding-left: 20px; }
+
+  .code {
+    position: relative; background: var(--code-bg); color: var(--code-text);
+    border-radius: 10px; margin: 10px 0; overflow: hidden;
+  }
+  .code pre {
+    margin: 0; padding: 14px 16px; padding-right: 84px; overflow-x: auto;
+    font: 14px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  .code button {
+    position: absolute; top: 8px; right: 8px; border: 1px solid #334155;
+    background: #1e293b; color: #e5e7eb; border-radius: 6px; padding: 4px 10px;
+    font-size: 0.8rem; cursor: pointer;
+  }
+  .code button:hover { background: #334155; }
+  .code .c { color: #7d8ba1; }
+  code { font: 0.9em ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+  .code code { background: none; padding: 0; }
+
+  .note {
+    background: var(--note-bg); border-left: 4px solid var(--note-line);
+    padding: 10px 14px; border-radius: 8px; margin: 12px 0;
+  }
+  .expect {
+    border-left: 4px solid var(--ok); padding: 8px 14px; margin: 10px 0;
+    background: color-mix(in srgb, var(--ok) 9%, transparent); border-radius: 8px;
+  }
+
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: .03em; }
+
+  .lights { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0; }
+  .light { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+  .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; }
+  .path span { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-weight: 600; }
+  .path i { color: var(--muted); font-style: normal; }
+
+  details { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+
+  .progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+  .progress > div { height: 100%; width: 0; background: var(--ok); transition: width .25s; }
+
+  footer { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 28px; }
+  .theme { float: right; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 8px; padding: 4px 10px; cursor: pointer; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <button class="theme" id="themeBtn" type="button">Tema</button>
+  <h1>ORION NetControl v0.4.0</h1>
+  <p>Mide tu conexión hacia tu router, tu proveedor de internet (ISP) y los servidores relay de Valve. Te dice si conviene buscar partida y en qué tramo está el problema.</p>
+  <nav class="toc">
+    <a href="#empezar">¿Por dónde empiezo?</a>
+    <a href="#instalar">A · Instalar</a>
+    <a href="#compilar">B · Compilar</a>
+    <a href="#uso">Uso rápido</a>
+    <a href="#juegos">Otros juegos</a>
+    <a href="#problemas">Problemas</a>
+  </nav>
+</header>
+
+<section class="card" id="empezar">
+  <h2>¿Por dónde empiezo?</h2>
+  <p>Necesitas <b>Windows 10 u 11 de 64 bits</b>. La app solo <b>mide</b>: no acelera la conexión, no toca el juego (ni memoria, ni archivos, ni opciones de lanzamiento) y no pide cuentas ni claves. Los datos se quedan en tu equipo.</p>
+  <p>Mira qué hay en la carpeta <code>Release</code>:</p>
+  <div class="choose">
+    <a href="#instalar"><b>Veo una carpeta <code>instaladores\</code></b>Sigue la <u>Opción A</u>: instalar y listo (2 minutos).</a>
+    <a href="#compilar"><b>Solo veo el <code>.zip</code> y <code>construir.ps1</code></b>Sigue la <u>Opción B</u>: compilar una vez (≈ 45 minutos en total).</a>
+  </div>
+  <h3>Contenido de la carpeta</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Archivo</th><th>Para qué sirve</th></tr>
+    <tr><td><code>INSTRUCCIONES.html</code></td><td>Este documento</td></tr>
+    <tr><td><code>orion-netcontrol-v0.4.0-fuente.zip</code></td><td>Código fuente para compilar la app</td></tr>
+    <tr><td><code>construir.ps1</code></td><td>Script que compila la app y deja los instaladores en <code>instaladores\</code></td></tr>
+    <tr><td><code>instaladores\</code></td><td>Aparece después de compilar: <code>.msi</code>, <code>.exe</code> de instalación, <code>.exe</code> portable y <code>orion-cli.exe</code></td></tr>
+  </table></div>
+</section>
+
+<section class="card" id="instalar">
+  <h2>Opción A — Instalar (ya tienes <code>instaladores\</code>)</h2>
+  <ol class="steps" data-group="a">
+    <li><div class="title">Ejecuta el instalador <label class="chk"><input type="checkbox"> hecho</label></div>
+      Abre la carpeta <code>instaladores\</code> y haz doble clic en <b><code>ORION NetControl_0.4.0_x64-setup.exe</code></b> (o en el <code>.msi</code>, cualquiera de los dos sirve).</li>
+    <li><div class="title">Si aparece "Windows protegió su PC" <label class="chk"><input type="checkbox"> hecho</label></div>
+      Pulsa <b>Más información</b> → <b>Ejecutar de todas formas</b>. Sale porque el instalador aún no está firmado digitalmente.</li>
+    <li><div class="title">Abre la app <label class="chk"><input type="checkbox"> hecho</label></div>
+      Busca <b>ORION NetControl</b> en el menú Inicio. El monitoreo arranca solo. Continúa en <a href="#uso">Uso rápido</a>.</li>
+  </ol>
+  <div class="progress"><div data-bar="a"></div></div>
+  <div class="note"><b>Sin instalar:</b> también puedes ejecutar directamente <code>orion-netcontrol-portable.exe</code>.</div>
+  <div class="note"><b>¿No se abre ninguna ventana?</b> La app usa Microsoft Edge WebView2, que ya viene en Windows 11 y Windows 10 actualizado. Si falta, instala el "Evergreen Bootstrapper" desde <a href="https://developer.microsoft.com/microsoft-edge/webview2/" target="_blank" rel="noopener">developer.microsoft.com/microsoft-edge/webview2</a>.</div>
+</section>
+
+<section class="card" id="compilar">
+  <h2>Opción B — Compilar la app (solo la primera vez)</h2>
+  <p class="muted">Se hace <b>una sola vez</b> en un equipo con Windows. Después puedes copiar la carpeta <code>instaladores\</code> a cualquier otro PC y seguir la Opción A. Necesitas internet y unos 6 GB libres.</p>
+
+  <h3>Parte 1 · Instalar los requisitos (20–30 min)</h3>
+  <ol class="steps" data-group="b1">
+    <li><div class="title">Visual Studio Build Tools <label class="chk"><input type="checkbox"> hecho</label></div>
+      Descárgalo de <a href="https://visualstudio.microsoft.com/es/visual-cpp-build-tools/" target="_blank" rel="noopener">visualstudio.microsoft.com/es/visual-cpp-build-tools</a>. En el instalador marca la casilla <b>"Desarrollo para el escritorio con C++"</b> y pulsa <b>Instalar</b>. Es el paso más largo.</li>
+    <li><div class="title">Rust <label class="chk"><input type="checkbox"> hecho</label></div>
+      Descarga y ejecuta <code>rustup-init.exe</code> desde <a href="https://rustup.rs" target="_blank" rel="noopener">rustup.rs</a>. Cuando pregunte, escribe <code>1</code> (opción por defecto) y pulsa Enter.</li>
+    <li><div class="title">Node.js LTS <label class="chk"><input type="checkbox"> hecho</label></div>
+      Descarga el instalador <code>.msi</code> LTS de <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> e instálalo con las opciones por defecto.</li>
+    <li><div class="title">Cierra y vuelve a abrir PowerShell <label class="chk"><input type="checkbox"> hecho</label></div>
+      Imprescindible: si no, PowerShell no "ve" los programas recién instalados. Luego comprueba que todo está:
+      <div class="code"><button type="button">Copiar</button><pre><code>cargo --version
+node --version</code></pre></div>
+      <div class="expect">Cada comando debe mostrar un número de versión (por ejemplo <code>cargo 1.8x.x</code> y <code>v22.x.x</code>). Si alguno dice "no se reconoce", repite su paso de instalación y vuelve a abrir PowerShell.</div></li>
+  </ol>
+  <div class="progress"><div data-bar="b1"></div></div>
+
+  <h3>Parte 2 · Compilar (10–20 min la primera vez)</h3>
+  <ol class="steps" data-group="b2">
+    <li><div class="title">Copia la carpeta a una ruta corta <label class="chk"><input type="checkbox"> hecho</label></div>
+      Copia <code>Release</code> a algo como <code>C:\orion\Release</code>. Evita rutas largas, con acentos o símbolos, y carpetas sincronizadas con OneDrive.</li>
+    <li><div class="title">Abre PowerShell en esa carpeta <label class="chk"><input type="checkbox"> hecho</label></div>
+      En el Explorador, entra en <code>C:\orion\Release</code>, haz clic derecho en un espacio vacío → <b>Abrir en Terminal</b>. O bien, desde cualquier PowerShell:
+      <div class="code"><button type="button">Copiar</button><pre><code>cd C:\orion\Release</code></pre></div></li>
+    <li><div class="title">Ejecuta el script de compilación <label class="chk"><input type="checkbox"> hecho</label></div>
+      <div class="code"><button type="button">Copiar</button><pre><code>powershell -ExecutionPolicy Bypass -File .\construir.ps1</code></pre></div>
+      El script hace todo solo:
+      <ul>
+        <li>comprueba <code>cargo</code>, <code>node</code> y <code>npm</code>, e instala Tauri CLI si falta (unos minutos, solo la primera vez);</li>
+        <li>descomprime el código en <code>orion-netcontrol\</code>;</li>
+        <li>instala las dependencias del frontend (<code>npm ci</code>);</li>
+        <li>compila la app y la herramienta <code>orion-cli</code>.</li>
+      </ul>
+      <div class="note">Deja la ventana abierta aunque parezca quieta: la compilación de Rust tarda y muestra muchas líneas <code>Compiling …</code>.</div></li>
+    <li><div class="title">Comprueba el resultado <label class="chk"><input type="checkbox"> hecho</label></div>
+      <div class="expect">Al final verás <b>==&gt; Listo</b> en amarillo, la lista de archivos en verde y la línea <code>Instaladores en: C:\orion\Release\instaladores</code>.</div>
+      Si en cambio aparece <b style="color:var(--bad)">ERROR:</b> en rojo, busca el mensaje en <a href="#problemas">Problemas frecuentes</a>.</li>
+    <li><div class="title">Instala <label class="chk"><input type="checkbox"> hecho</label></div>
+      Ya tienes la carpeta <code>instaladores\</code>. Sigue la <a href="#instalar">Opción A</a>.</li>
+  </ol>
+  <div class="progress"><div data-bar="b2"></div></div>
+
+  <details>
+    <summary>Opciones avanzadas del script</summary>
+    <div class="tablewrap"><table>
+      <tr><th>Comando</th><th>Qué hace</th></tr>
+      <tr><td><code>powershell -ExecutionPolicy Bypass -File .\construir.ps1 -Test</code></td><td>Corre las pruebas automáticas antes de compilar</td></tr>
+      <tr><td><code>powershell -ExecutionPolicy Bypass -File .\construir.ps1 -Dev</code></td><td>Abre la app en modo desarrollo, sin generar instalador (Ctrl+C para salir)</td></tr>
+    </table></div>
+  </details>
+</section>
+
+<section class="card" id="uso">
+  <h2>Uso rápido</h2>
+  <ol class="steps" data-group="u">
+    <li><div class="title">Elige tu región</div>
+      Arriba a la izquierda: Lima, Santiago, Buenos Aires, São Paulo, Virginia… La <b>misma que usas en Dota</b>.</li>
+    <li><div class="title">Espera ~10 segundos y mira el semáforo</div>
+      <div class="lights">
+        <div class="light"><span class="dot" style="background:var(--ok)"></span><b>LISTO</b><br><span class="muted">Puedes buscar partida.</span></div>
+        <div class="light"><span class="dot" style="background:var(--warn)"></span><b>PRECAUCIÓN</b><br><span class="muted">Conexión inestable.</span></div>
+        <div class="light"><span class="dot" style="background:var(--bad)"></span><b>NO BUSCAR</b><br><span class="muted">Conexión degradada.</span></div>
+        <div class="light"><span class="dot" style="background:#9aa5b1"></span><b>SIN DATOS</b><br><span class="muted">Todavía midiendo.</span></div>
+      </div></li>
+    <li><div class="title">Si algo va mal, abre la pestaña Diagnóstico</div>
+      Muestra el camino y en qué tramo está el problema, con recomendaciones:
+      <div class="path"><span>Tu PC</span><i>→</i><span>Router</span><i>→</i><span>ISP</span><i>→</i><span>Valve</span></div></li>
+    <li><div class="title">Deja que aprenda tu línea base</div>
+      Tarda unos <b>5 minutos</b> por red y franja horaria. Mientras calibra, el semáforo usa límites fijos (80 / 120 ms).</li>
+    <li><div class="title">Durante la partida, pulsa PARTIDA</div>
+      Detiene las animaciones y solo suena una alerta cuando el semáforo pasa a rojo.</li>
+  </ol>
+  <p class="muted">Las pestañas <b>Bufferbloat</b>, <b>Acciones</b> e <b>Historial</b> aparecen como "Próximamente": son de una versión posterior y no muestran datos inventados.</p>
+</section>
+
+<section class="card" id="juegos">
+  <h2>¿Sirve para otros juegos?</h2>
+  <p>La app mide tres tramos: <b>PC → router</b>, <b>router → ISP</b> e <b>ISP → relays de Valve</b> (Steam Datagram Relay). Los dos primeros afectan a cualquier juego online; el tercero solo a los que usan los relays de Valve.</p>
+  <h3>Compatibilidad completa</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Juego</th><th>Nota</th></tr>
+    <tr><td><b>Dota 2</b></td><td>Para el que se diseñó la app</td></tr>
+    <tr><td><b>Counter-Strike 2</b></td><td>El matchmaking oficial usa los mismos relays</td></tr>
+    <tr><td><b>Deadlock</b></td><td>Igual que CS2</td></tr>
+    <tr><td><b>Team Fortress 2</b></td><td>Solo servidores oficiales (casual/competitivo); los comunitarios no usan relays</td></tr>
+  </table></div>
+  <h3>Compatibilidad parcial</h3>
+  <p>Valorant, League of Legends, Fortnite, Apex Legends, Rocket League, Overwatch 2, Call of Duty, Free Fire en emulador, etc.</p>
+  <ul>
+    <li><b>Sí sirve</b> para saber si el problema está <b>en tu casa</b> (Wi-Fi débil, banda de 2,4 GHz, router saturado) o <b>en tu ISP</b>, que es la causa más habitual del lag.</li>
+    <li><b>No mide</b> los servidores de esos juegos: usa el panel de red del propio juego para ver tu ping real.</li>
+    <li>El semáforo se basa en la latencia hacia Valve; tómalo como referencia y fíjate sobre todo en los tramos <b>Router</b> e <b>ISP</b> de Diagnóstico.</li>
+  </ul>
+</section>
+
+<section class="card" id="cli">
+  <h2>Línea de comandos <span class="muted" style="font-weight:400;font-size:1rem">(opcional, para soporte técnico)</span></h2>
+  <p>Abre PowerShell dentro de <code>instaladores\</code> y ejecuta:</p>
+  <div class="code"><button type="button">Copiar</button><pre><code>.\orion-cli.exe monitor --region lim     <span class="c"># monitoreo en la consola</span>
+.\orion-cli.exe spike sdr -n 5           <span class="c"># qué relays de Valve responden y con qué latencia</span>
+.\orion-cli.exe spike hops 155.133.244.35</code></pre></div>
+</section>
+
+<section class="card" id="problemas">
+  <h2>Problemas frecuentes</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Síntoma</th><th>Solución</th></tr>
+    <tr><td><code>No se encontro 'cargo'</code> o <code>'node'</code></td><td>Instala Rust / Node.js y <b>cierra y reabre</b> PowerShell</td></tr>
+    <tr><td><code>linker 'link.exe' not found</code></td><td>Falta Visual Studio Build Tools con "Desarrollo para el escritorio con C++"</td></tr>
+    <tr><td><code>… la ejecución de scripts está deshabilitada en este sistema</code></td><td>Usa el comando completo: <code>powershell -ExecutionPolicy Bypass -File .\construir.ps1</code></td></tr>
+    <tr><td>Error de rutas demasiado largas o archivos no encontrados</td><td>Mueve la carpeta a <code>C:\orion\Release</code> (fuera de OneDrive) y repite</td></tr>
+    <tr><td>Un relay aparece como <b>ICMP BLOQUEADO</b></td><td>Ese servidor no responde al ping. Es una limitación del servidor, no de tu red</td></tr>
+    <tr><td>El tramo <b>ISP</b> dice "no identificado"</td><td>Tu proveedor no responde al traceroute. El resto del diagnóstico sigue funcionando</td></tr>
+    <tr><td>El antivirus avisa sobre la app</td><td>Pasa con programas sin firmar que envían ping. Solo usa la API oficial de Windows y no pide permisos de administrador</td></tr>
+    <tr><td>La compilación falla con otro error</td><td>Ejecuta <code>powershell -ExecutionPolicy Bypass -File .\construir.ps1 -Test</code> y envía la salida completa a quien te pasó el proyecto</td></tr>
+  </table></div>
+
+  <h3>Dónde guarda los datos</h3>
+  <p>En <code>%APPDATA%\net.orion.netcontrol\</code>:</p>
+  <ul>
+    <li><code>orion.db</code> — la línea base aprendida y tus ajustes;</li>
+    <li><code>sdr_config.json</code> — caché de la lista de servidores de Valve.</li>
+  </ul>
+  <p>Para empezar de cero, borra esa carpeta con la app cerrada.</p>
+</section>
+
+<footer>ORION NetControl no está afiliado a Valve. "Dota 2" es una marca de Valve Corporation.</footer>
+</div>
+
+<script>
+  // Botones "Copiar" (quita los comentarios # del bloque)
+  document.querySelectorAll('.code button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.parentElement.querySelector('pre').innerText
+        .split('\n').map(function (l) { return l.replace(/\s+#.*$/, ''); }).join('\n').trim();
+      var done = function () { btn.textContent = 'Copiado ✓'; setTimeout(function () { btn.textContent = 'Copiar'; }, 1500); };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+      function fallback() {
+        var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+        ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove();
+      }
+    });
+  });
+
+  // Casillas de progreso (se recuerdan en este navegador)
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  document.querySelectorAll('ol.steps[data-group]').forEach(function (ol) {
+    var g = ol.dataset.group, items = ol.querySelectorAll(':scope > li'), bar = document.querySelector('[data-bar="' + g + '"]');
+    function update() {
+      var n = 0, total = 0;
+      items.forEach(function (li) {
+        var cb = li.querySelector('input[type=checkbox]'); if (!cb) return;
+        total++; li.classList.toggle('done', cb.checked); if (cb.checked) n++;
+      });
+      if (bar && total) bar.style.width = (100 * n / total) + '%';
+    }
+    items.forEach(function (li, i) {
+      var cb = li.querySelector('input[type=checkbox]'); if (!cb) return;
+      var key = 'orion-step-' + g + '-' + i;
+      cb.checked = store(key) === '1';
+      cb.addEventListener('change', function () { store(key, cb.checked ? '1' : '0'); update(); });
+    });
+    update();
+  });
+
+  // Tema claro/oscuro
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    var r = document.documentElement, cur = r.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    r.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+</script>
+</body>
+</html>

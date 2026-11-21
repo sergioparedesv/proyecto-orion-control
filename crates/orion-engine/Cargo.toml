@@ -1,0 +1,13 @@
+[package]
+name = "orion-engine"
+description = "Estadística y lógica de decisión de ORION (sin dependencias del sistema operativo)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
